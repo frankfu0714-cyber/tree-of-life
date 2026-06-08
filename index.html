@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>Tree of Life — Gesture Particle App</title>
+<title>Tree of Life — From Roots to Starlight</title>
 <style>
   :root{
     --bg0:#03060a; --bg1:#06121a;
@@ -12,27 +12,30 @@
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%;width:100%;overflow:hidden;background:radial-gradient(120% 120% at 50% 35%, var(--bg1), var(--bg0) 70%);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:#dff6ff}
   #stage{position:fixed;inset:0}
-  /* webcam shown faint + mirrored as a backdrop */
   #cam{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);opacity:.12;filter:saturate(.6) blur(1px);pointer-events:none}
   #gl{position:fixed;inset:0;display:block}
-  /* overlay UI */
-  #hud{position:fixed;left:18px;bottom:16px;z-index:5;max-width:340px;font-size:12.5px;line-height:1.5;color:var(--soft);text-shadow:0 1px 8px rgba(0,0,0,.8)}
-  #hud b{color:#eafffb;font-weight:600}
+  /* legend */
+  #hud{position:fixed;left:18px;bottom:16px;z-index:5;max-width:320px;font-size:12.5px;line-height:1.5;color:var(--soft);text-shadow:0 1px 8px rgba(0,0,0,.85)}
   .row{display:flex;gap:8px;align-items:flex-start;margin-top:6px}
-  .key{flex:0 0 auto;min-width:96px;color:var(--teal);font-weight:600}
+  .key{flex:0 0 auto;min-width:104px;color:var(--teal);font-weight:600}
   #status{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:5;font-size:12px;letter-spacing:.3px;color:var(--soft);background:rgba(4,16,22,.45);border:1px solid rgba(70,216,255,.18);padding:6px 14px;border-radius:999px;backdrop-filter:blur(6px)}
   #status .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#ff5e6c;margin-right:7px;vertical-align:middle;box-shadow:0 0 8px #ff5e6c}
   #status.live .dot{background:var(--teal);box-shadow:0 0 8px var(--teal)}
-  #title{position:fixed;top:46px;left:50%;transform:translateX(-50%);z-index:5;text-align:center;pointer-events:none}
+  #title{position:fixed;top:46px;left:50%;transform:translateX(-50%);z-index:5;text-align:center;pointer-events:none;transition:opacity .5s}
   #title h1{font-size:15px;font-weight:600;letter-spacing:2.5px;color:#eafffb;opacity:.85}
   #title p{font-size:11px;letter-spacing:1px;color:var(--soft);opacity:.65;margin-top:2px}
+  /* caption shown while inspecting a picture */
+  #caption{position:fixed;left:50%;bottom:64px;transform:translate(-50%,12px);z-index:6;width:min(560px,86vw);text-align:center;opacity:0;transition:opacity .45s ease, transform .45s ease;pointer-events:none}
+  #caption.show{opacity:1;transform:translate(-50%,0)}
+  #caption .ttl{font-size:20px;font-weight:600;letter-spacing:3px;color:#eafffb;text-transform:uppercase}
+  #caption .txt{margin-top:6px;font-size:14px;line-height:1.6;color:var(--soft);text-shadow:0 1px 10px rgba(0,0,0,.9)}
+  #caption .ttl::after{content:"";display:block;width:54px;height:2px;margin:9px auto 0;background:linear-gradient(90deg,var(--teal),var(--cyan));border-radius:2px}
   /* start screen */
-  #gate{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:radial-gradient(120% 120% at 50% 40%, rgba(8,22,30,.85), rgba(2,5,9,.96));backdrop-filter:blur(2px);text-align:center;padding:24px}
+  #gate{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;background:radial-gradient(120% 120% at 50% 40%, rgba(8,22,30,.85), rgba(2,5,9,.96));backdrop-filter:blur(2px);text-align:center;padding:24px}
   #gate h2{font-size:24px;font-weight:600;letter-spacing:1px}
-  #gate p{max-width:460px;font-size:13.5px;line-height:1.6;color:var(--soft)}
+  #gate p{max-width:470px;font-size:13.5px;line-height:1.6;color:var(--soft)}
   #go{cursor:pointer;border:none;border-radius:999px;padding:13px 30px;font-size:14px;font-weight:600;letter-spacing:.5px;color:#04130f;background:linear-gradient(120deg,var(--teal),var(--cyan));box-shadow:0 8px 30px rgba(70,216,255,.35);transition:transform .15s ease, box-shadow .15s ease}
   #go:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(70,216,255,.5)}
-  #go:active{transform:translateY(0)}
   #gate small{font-size:11px;color:rgba(180,240,255,.45)}
   .pulse{width:120px;height:120px;border-radius:50%;background:radial-gradient(circle at 50% 45%, rgba(70,216,255,.55), rgba(62,240,196,.12) 55%, transparent 70%);animation:breathe 3.2s ease-in-out infinite}
   @keyframes breathe{0%,100%{transform:scale(.92);opacity:.7}50%{transform:scale(1.08);opacity:1}}
@@ -47,35 +50,38 @@
 </div>
 
 <div id="status"><span class="dot"></span><span id="statusText">camera off</span></div>
-<div id="title"><h1>TREE&nbsp;OF&nbsp;LIFE</h1><p>shape it with your hands</p></div>
+<div id="title"><h1>TREE&nbsp;OF&nbsp;LIFE</h1><p>from roots to starlight</p></div>
+
+<div id="caption"><div class="ttl"></div><div class="txt"></div></div>
 
 <div id="hud">
   <div class="row"><span class="key">✋ Open hand</span><span>bloom &amp; disperse the canopy</span></div>
   <div class="row"><span class="key">🤏 Pinch</span><span>pull particles into a glowing core</span></div>
-  <div class="row"><span class="key">✊ Fist</span><span>grab &amp; drag the whole tree</span></div>
-  <div class="row"><span class="key">🙌 Two hands</span><span>tilt &amp; turn — spin it in 3D</span></div>
+  <div class="row"><span class="key">✊ Fist</span><span>high-speed spin</span></div>
+  <div class="row"><span class="key">☝️ Point</span><span>fly in to a picture &amp; read its story</span></div>
+  <div class="row"><span class="key">🙌 Two hands</span><span>tilt &amp; turn the tree</span></div>
 </div>
 
 <div id="gate">
   <div class="pulse"></div>
   <h2>Tree of Life</h2>
-  <p>A living cloud of green-blue particles you sculpt with hand gestures. Allow camera access, then move your hands in front of the screen.</p>
+  <p>A living tree of green-blue particles, with five glowing memories rising from its roots to the stars. Shape it with your hands — then point at a memory to step inside it.</p>
   <button id="go">Begin · enable camera</button>
   <small>Runs entirely in your browser. Nothing is recorded or uploaded.</small>
 </div>
 
 <div id="err"><div id="errMsg"></div></div>
 
-<!-- Three.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<!-- MediaPipe Hands -->
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
 
 <script>
 /* ============================================================
-   TREE OF LIFE — gesture-driven particle system
-   Three.js (render) + MediaPipe Hands (gesture input)
+   TREE OF LIFE — "From Roots to Starlight"
+   Three.js particles + framed story images + MediaPipe gestures
+   Gestures: open=bloom, pinch=concentrate, fist=high-speed spin,
+             point=inspect a picture, two hands=tilt/turn
    ============================================================ */
 
 // ---------- THREE setup ----------
@@ -85,9 +91,10 @@ renderer.setClearColor(0x000000, 0);
 const scene = new THREE.Scene();
 
 const CAM_DIST = 12;
+const TREE_Y = 0.6;
 const camera = new THREE.PerspectiveCamera(50, innerWidth/innerHeight, 0.1, 200);
-camera.position.set(0, 0.6, CAM_DIST);
-camera.lookAt(0, 0.6, 0);
+camera.position.set(0, TREE_Y, CAM_DIST);
+camera.lookAt(0, TREE_Y, 0);
 
 function resize(){
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -97,7 +104,6 @@ function resize(){
 }
 addEventListener('resize', resize); resize();
 
-// world dimensions of the z=0 plane (for mapping hand position -> world)
 function visible(){
   const h = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov/2)) * CAM_DIST;
   return { h, w: h * camera.aspect };
@@ -109,7 +115,7 @@ const home   = new Float32Array(COUNT*3);
 const colArr = new Float32Array(COUNT*3);
 const randDir= new Float32Array(COUNT*3);
 const seed   = new Float32Array(COUNT);
-const size   = new Float32Array(COUNT);
+const psize  = new Float32Array(COUNT);
 
 const tmpColor = new THREE.Color();
 let p = 0;
@@ -117,31 +123,26 @@ function put(x,y,z, hue, sat, light, sz){
   home[p*3]=x; home[p*3+1]=y; home[p*3+2]=z;
   tmpColor.setHSL(hue/360, sat, light);
   colArr[p*3]=tmpColor.r; colArr[p*3+1]=tmpColor.g; colArr[p*3+2]=tmpColor.b;
-  // random unit direction for scatter
   let rx=Math.random()*2-1, ry=Math.random()*2-1, rz=Math.random()*2-1;
   const rl=Math.hypot(rx,ry,rz)||1; randDir[p*3]=rx/rl; randDir[p*3+1]=ry/rl; randDir[p*3+2]=rz/rl;
   seed[p]=Math.random()*6.283;
-  size[p]=sz;
+  psize[p]=sz;
   p++;
 }
 const rnd=(a,b)=>a+Math.random()*(b-a);
-// hue: ~150 green (low) -> ~200 cyan/blue (high)
 const hueFor = y => 150 + THREE.MathUtils.clamp((y+3.5)/6.5,0,1)*55 + rnd(-8,8);
 
-// Roots (spreading at base)
 for(let i=0;i<700;i++){
   const a=Math.random()*Math.PI*2, r=rnd(0.2,3.4)*Math.pow(Math.random(),0.6);
   const y=-3.6 + Math.random()*0.9;
   put(Math.cos(a)*r, y - r*0.15, Math.sin(a)*r*0.6, hueFor(y), 0.75, rnd(0.4,0.55), rnd(5,9));
 }
-// Trunk
 for(let i=0;i<900;i++){
   const t=Math.random(); const y=-3.0 + t*3.4;
   const r=(0.45*(1-t*0.6))*Math.sqrt(Math.random());
   const a=Math.random()*Math.PI*2;
   put(Math.cos(a)*r, y, Math.sin(a)*r, hueFor(y), 0.7, rnd(0.45,0.6), rnd(6,11));
 }
-// Branches forking up & out toward the canopy
 const branches = 7;
 for(let b=0;b<branches;b++){
   const baseA = (b/branches)*Math.PI*2 + rnd(-0.3,0.3);
@@ -157,11 +158,9 @@ for(let b=0;b<branches;b++){
     put(x+rnd(-jit,jit), y+rnd(-jit,jit), z+rnd(-jit,jit), hueFor(y), 0.72, rnd(0.5,0.65), rnd(5,9));
   }
 }
-// Canopy — glowing ellipsoid cloud (the bulk of the particles)
 const cCenter = new THREE.Vector3(0, 2.7, 0);
 const remaining = COUNT - p;
 for(let i=0;i<remaining;i++){
-  // denser toward center
   const u=Math.random(), v=Math.random();
   const theta=u*Math.PI*2, phi=Math.acos(2*v-1);
   const rad=Math.pow(Math.random(),0.5);
@@ -178,22 +177,19 @@ geo.setAttribute('aHome', new THREE.BufferAttribute(home,3));
 geo.setAttribute('aColor', new THREE.BufferAttribute(colArr,3));
 geo.setAttribute('aRand', new THREE.BufferAttribute(randDir,3));
 geo.setAttribute('aSeed', new THREE.BufferAttribute(seed,1));
-geo.setAttribute('aSize', new THREE.BufferAttribute(size,1));
-// position attribute is required by three; reuse home as initial
+geo.setAttribute('aSize', new THREE.BufferAttribute(psize,1));
 geo.setAttribute('position', new THREE.BufferAttribute(home.slice(),3));
 
 const uniforms = {
   uTime:   { value:0 },
-  uMorph:  { value:0 },     // -1 concentrate ... 0 rest ... +1 bloom
+  uMorph:  { value:0 },
   uPixel:  { value:Math.min(devicePixelRatio,2) },
-  uCenter: { value:new THREE.Vector3(0,0.6,0) },
+  uCenter: { value:new THREE.Vector3(0,0,0) },
+  uDim:    { value:1 },
 };
 
 const mat = new THREE.ShaderMaterial({
-  uniforms,
-  transparent:true,
-  depthWrite:false,
-  depthTest:false,
+  uniforms, transparent:true, depthWrite:false, depthTest:false,
   blending:THREE.AdditiveBlending,
   vertexShader:`
     attribute vec3 aHome; attribute vec3 aColor; attribute vec3 aRand;
@@ -203,22 +199,16 @@ const mat = new THREE.ShaderMaterial({
     void main(){
       vec3 pos = aHome;
       vec3 dir = normalize(aHome - uCenter + 0.0001);
-
-      // gentle living sway (stronger toward the canopy top)
       float h = clamp((aHome.y+3.5)/6.5, 0.0, 1.0);
       pos.x += sin(uTime*0.6 + aSeed)        * 0.10 * (0.25+h);
       pos.z += cos(uTime*0.5 + aSeed*1.3)    * 0.10 * (0.25+h);
       pos.y += sin(uTime*0.4 + aSeed*0.7)    * 0.05 * (0.25+h);
-
-      // morph: bloom outward (+) or collapse to core (-)
       float m = uMorph;
       vec3 bloom = pos + dir*m*4.0 + aRand*m*2.6;
       vec3 core  = mix(pos, uCenter, clamp(-m,0.0,1.0)*0.92);
       pos = m >= 0.0 ? bloom : core;
-
-      vGlow = 1.0 + max(-m,0.0)*1.4;          // brighter when concentrated
+      vGlow = 1.0 + max(-m,0.0)*1.4;
       vColor = aColor;
-
       vec4 mv = modelViewMatrix * vec4(pos,1.0);
       gl_Position = projectionMatrix * mv;
       float twinkle = 0.75 + 0.25*sin(uTime*2.0 + aSeed*5.0);
@@ -227,97 +217,198 @@ const mat = new THREE.ShaderMaterial({
   `,
   fragmentShader:`
     precision mediump float;
-    varying vec3 vColor; varying float vGlow;
+    varying vec3 vColor; varying float vGlow; uniform float uDim;
     void main(){
       float d = length(gl_PointCoord - vec2(0.5));
       float a = smoothstep(0.5, 0.0, d);
       a = pow(a, 1.7);
-      gl_FragColor = vec4(vColor * vGlow, a);
+      gl_FragColor = vec4(vColor * vGlow * uDim, a * uDim);
     }
   `
 });
 
+// particle group: rotates + holds the tree at TREE_Y
+const tree = new THREE.Group();
+tree.position.y = TREE_Y;
 const points = new THREE.Points(geo, mat);
-scene.add(points);
+points.renderOrder = 0;
+tree.add(points);
+scene.add(tree);
 
-// ---------- gesture state ----------
+// ---------- Story images ("memories" rising up the tree) ----------
+const STORY = [
+  { id:'photo-1441974231531-c6227db76b6e', title:'Origins',
+    text:'Everything begins in the quiet dark, where roots remember the rain.',
+    pos:[-1.5,-2.5,2.3] },
+  { id:'photo-1470071459604-3b5ec3a7fe05', title:'Awakening',
+    text:'The first reach toward light — small, certain, and green.',
+    pos:[2.1,-0.3,1.9] },
+  { id:'photo-1432405972618-c60b0225b8f9', title:'Currents',
+    text:'Water carves the way; every branching is a choice.',
+    pos:[-2.5,1.4,1.6] },
+  { id:'photo-1506744038136-46273834b3fb', title:'Horizon',
+    text:'The world widens — vast, luminous, and yours.',
+    pos:[2.4,2.7,1.4] },
+  { id:'photo-1483347756197-71ef80e95f73', title:'Starlight',
+    text:'At the canopy, dreams touch the sky and scatter into stars.',
+    pos:[0.0,4.7,1.3] },
+];
+const IMG_URL = id => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=900&q=80`;
+
+// soft circular glow sprite for the picture halos
+function makeGlow(){
+  const c=document.createElement('canvas'); c.width=c.height=128;
+  const g=c.getContext('2d');
+  const grd=g.createRadialGradient(64,64,8,64,64,64);
+  grd.addColorStop(0,'rgba(120,245,220,0.55)');
+  grd.addColorStop(0.5,'rgba(70,216,255,0.18)');
+  grd.addColorStop(1,'rgba(70,216,255,0)');
+  g.fillStyle=grd; g.fillRect(0,0,128,128);
+  const t=new THREE.Texture(c); t.needsUpdate=true; return t;
+}
+const glowTex = makeGlow();
+const loader = new THREE.TextureLoader();
+loader.crossOrigin = 'anonymous';
+
+const PHOTO_W = 1.75, PHOTO_H = 1.17;
+const images = [];
+STORY.forEach((s, i)=>{
+  const grp = new THREE.Group();
+
+  // glowing halo behind
+  const halo = new THREE.Mesh(
+    new THREE.PlaneGeometry(PHOTO_W*1.75, PHOTO_H*1.95),
+    new THREE.MeshBasicMaterial({ map:glowTex, transparent:true, opacity:0.9,
+      blending:THREE.AdditiveBlending, depthTest:false, depthWrite:false })
+  );
+  halo.position.z = -0.05; halo.renderOrder = 1; grp.add(halo);
+
+  // teal frame
+  const frame = new THREE.Mesh(
+    new THREE.PlaneGeometry(PHOTO_W+0.12, PHOTO_H+0.12),
+    new THREE.MeshBasicMaterial({ color:0x6ffadf, transparent:true, opacity:0.9,
+      depthTest:false, depthWrite:false })
+  );
+  frame.position.z = -0.01; frame.renderOrder = 2; grp.add(frame);
+
+  // the photo (transparent until the texture loads)
+  const photoMat = new THREE.MeshBasicMaterial({ color:0x000000, transparent:true,
+    opacity:0, depthTest:false, depthWrite:false, toneMapped:false });
+  const photo = new THREE.Mesh(new THREE.PlaneGeometry(PHOTO_W, PHOTO_H), photoMat);
+  photo.renderOrder = 3; grp.add(photo);
+  loader.load(IMG_URL(s.id), tex=>{
+    if(tex.colorSpace!==undefined) tex.colorSpace = THREE.SRGBColorSpace;
+    photoMat.map = tex; photoMat.color.set(0xffffff); photoMat.needsUpdate = true;
+  });
+
+  grp.position.set(s.pos[0], TREE_Y + s.pos[1], s.pos[2]);
+  scene.add(grp);
+  images.push({ grp, halo, frame, photoMat, home:new THREE.Vector3(s.pos[0], s.pos[1], s.pos[2]),
+                phase:Math.random()*6.28, title:s.title, text:s.text });
+});
+
+// ---------- gesture / interaction state ----------
 const state = {
   morphTarget:0, morph:0,
   rot:new THREE.Vector3(0,0,0), rotTarget:new THREE.Vector3(0,0,0),
-  pos:new THREE.Vector3(0,0.6,0), posTarget:new THREE.Vector3(0,0.6,0),
-  idleSpin:0, twoHand:false, hands:0,
+  spinVel:0.0016, steering:false, twoHand:false, anyFist:false,
+  focusIndex:-1, dim:1,
+  hands:0,
 };
+const IDLE_SPIN = 0.0016, FAST_SPIN = 0.34;
 
-// landmark helpers
+// ---------- landmark helpers ----------
 const dist = (a,b)=>Math.hypot(a.x-b.x, a.y-b.y, (a.z||0)-(b.z||0));
 function analyzeHand(lm){
-  const size = dist(lm[0], lm[9]) || 1e-4;        // wrist -> middle MCP
-  const pinch = dist(lm[4], lm[8]) / size;        // thumb tip -> index tip
-  // extended fingers (tip farther from wrist than pip)
-  const pairs = [[8,6],[12,10],[16,14],[20,18]];
-  let ext = 0;
-  for(const [tip,pip] of pairs){ if(dist(lm[tip],lm[0]) > dist(lm[pip],lm[0])*1.05) ext++; }
-  const cx = lm[9].x, cy = lm[9].y;               // hand center (mirror x later)
-  return { pinch, ext, cx, cy };
+  const hsize = dist(lm[0], lm[9]) || 1e-4;
+  const pinch = dist(lm[4], lm[8]) / hsize;        // thumb tip <-> index tip
+  const pairs = [[8,6],[12,10],[16,14],[20,18]];   // index, middle, ring, pinky
+  const ext = pairs.map(([tip,pip])=> dist(lm[tip],lm[0]) > dist(lm[pip],lm[0])*1.05 );
+  const extCount = ext.filter(Boolean).length;
+  return {
+    cx: lm[9].x, cy: lm[9].y,
+    ix: lm[8].x, iy: lm[8].y,                       // index fingertip
+    pinch, extCount,
+    isFist:  extCount===0,
+    isPoint: extCount===1 && ext[0],
+    isPinch: pinch<0.42 && extCount>=2,
+    isOpen:  extCount>=4,
+  };
+}
+
+const _v = new THREE.Vector3();
+function projectToScreen01(worldVec){
+  _v.copy(worldVec).project(camera);          // NDC -1..1
+  return { x:(_v.x*0.5+0.5), y:(1-(_v.y*0.5+0.5)) };
 }
 
 function onResults(res){
   const hands = res.multiHandLandmarks || [];
   state.hands = hands.length;
   const sEl = document.getElementById('status');
-  const sT  = document.getElementById('statusText');
   sEl.classList.add('live');
-  sT.textContent = hands.length===0 ? 'camera live · show your hands'
-                 : hands.length===1 ? '1 hand tracked' : '2 hands tracked';
+  document.getElementById('statusText').textContent =
+    hands.length===0 ? 'camera live · show your hands'
+    : hands.length===1 ? '1 hand tracked' : '2 hands tracked';
 
   if(hands.length===0){
-    state.morphTarget = 0; state.twoHand=false;
-    state.posTarget.set(0,0.6,0);
+    state.morphTarget=0; state.twoHand=false; state.steering=false;
+    state.anyFist=false; state.focusIndex=-1;
     return;
   }
 
   const info = hands.map(analyzeHand);
-  const vw = visible();
+  state.anyFist = info.some(h=>h.isFist);
 
-  // ---- morph from strongest single-hand signal ----
+  // morph from open / pinch hands (ignore fist & point)
   let morph = 0;
   for(const h of info){
+    if(h.isFist || h.isPoint) continue;
     let v = 0;
-    if(h.ext <= 1)               v = 0;                          // fist -> handled as grab, no morph
-    else if(h.pinch < 0.45)      v = -(1 - Math.min(h.pinch/0.45,1)); // pinch -> concentrate
-    else if(h.ext >= 4)          v = Math.min((h.pinch-0.45)/1.0 + (h.ext-3)*0.25, 1); // open -> bloom
+    if(h.isPinch)      v = -(1 - Math.min(h.pinch/0.42,1));
+    else if(h.isOpen)  v = Math.min((h.extCount-3)*0.5 + 0.4, 1);
     if(Math.abs(v) > Math.abs(morph)) morph = v;
   }
   state.morphTarget = morph;
 
-  // ---- two-hand rotation ----
-  if(hands.length>=2){
-    state.twoHand = true;
-    // sort by mirrored screen x so "left"/"right" match the user's view
-    const a = { x:1-info[0].cx, y:info[0].cy };
-    const b = { x:1-info[1].cx, y:info[1].cy };
-    const left  = a.x < b.x ? a : b;
-    const right = a.x < b.x ? b : a;
-    const dx = right.x - left.x, dy = right.y - left.y;
-    const roll = Math.atan2(dy, dx);               // tilt line between hands
-    const midX = (left.x+right.x)/2, midY=(left.y+right.y)/2;
-    state.rotTarget.z = -roll;
-    state.rotTarget.y = (midX-0.5)*2.4;
-    state.rotTarget.x = (midY-0.5)*1.2;
+  // two-hand steering (tilt/turn) — only when not fisting
+  if(hands.length>=2 && !state.anyFist){
+    state.steering = true; state.twoHand = true;
+    const a={x:1-info[0].cx,y:info[0].cy}, b={x:1-info[1].cx,y:info[1].cy};
+    const L=a.x<b.x?a:b, R=a.x<b.x?b:a;
+    const roll=Math.atan2(R.y-L.y, R.x-L.x);
+    const midX=(L.x+R.x)/2, midY=(L.y+R.y)/2;
+    state.rotTarget.z=-roll;
+    state.rotTarget.y=(midX-0.5)*2.4;
+    state.rotTarget.x=(midY-0.5)*1.2;
   } else {
-    state.twoHand = false;
-    state.rotTarget.x *= 0.9; state.rotTarget.z *= 0.9; // ease tilt back
+    state.steering=false; state.twoHand=false;
   }
 
-  // ---- single-hand fist => grab & drag ----
-  if(hands.length===1 && info[0].ext<=1){
-    const x = (1-info[0].cx - 0.5) * vw.w;
-    const y = (0.5 - info[0].cy) * vw.h;
-    state.posTarget.set(THREE.MathUtils.clamp(x,-vw.w/2,vw.w/2),
-                        THREE.MathUtils.clamp(y,-vw.h/2,vw.h/2)+0.6*0, 0);
-  } else {
-    state.posTarget.set(0,0.6,0);
+  // point to inspect: pick the picture nearest the index fingertip
+  let focus=-1;
+  const ph = info.find(h=>h.isPoint);
+  if(ph && !state.anyFist){
+    const fx=1-ph.ix, fy=ph.iy;       // mirror x to match the on-screen view
+    let best=0.32;                     // max screen-distance to "grab" a picture
+    images.forEach((im,idx)=>{
+      const s=projectToScreen01(im.grp.position);
+      const d=Math.hypot(s.x-fx, s.y-fy);
+      if(d<best){ best=d; focus=idx; }
+    });
   }
+  state.focusIndex = focus;
+}
+
+// ---------- caption overlay ----------
+const capEl=document.getElementById('caption');
+const capTtl=capEl.querySelector('.ttl'), capTxt=capEl.querySelector('.txt');
+let shownCap=-1;
+function updateCaption(idx){
+  if(idx===shownCap) return;
+  shownCap=idx;
+  if(idx>=0){ capTtl.textContent=images[idx].title; capTxt.textContent=images[idx].text; capEl.classList.add('show'); }
+  else capEl.classList.remove('show');
 }
 
 // ---------- MediaPipe init ----------
@@ -336,24 +427,58 @@ function initHands(video){
 
 // ---------- animation loop ----------
 const clock = new THREE.Clock();
+const _euler = new THREE.Euler();
+const FOCUS_SLOT = new THREE.Vector3(0, TREE_Y, 7.0);   // in front of the camera
+
 function animate(){
   requestAnimationFrame(animate);
   const t = clock.getElapsedTime();
   uniforms.uTime.value = t;
 
-  // smooth morph
+  // morph
   state.morph += (state.morphTarget - state.morph)*0.07;
   uniforms.uMorph.value = state.morph;
 
-  // rotation: idle slow spin unless steering with two hands
-  if(!state.twoHand){ state.idleSpin += 0.0016; state.rotTarget.y = state.idleSpin; }
-  else { state.idleSpin = state.rotTarget.y; }
-  state.rot.lerp(state.rotTarget, 0.08);
-  points.rotation.set(state.rot.x, state.rot.y, state.rot.z);
+  // rotation: fast spin (fist) / idle spin / two-hand steering
+  const targetVel = state.anyFist ? FAST_SPIN : IDLE_SPIN;
+  state.spinVel += (targetVel - state.spinVel)*0.06;
+  if(state.steering){
+    state.rot.lerp(state.rotTarget, 0.08);
+  } else {
+    state.rot.y += state.spinVel;
+    state.rot.x += (0 - state.rot.x)*0.06;
+    state.rot.z += (0 - state.rot.z)*0.06;
+  }
+  tree.rotation.set(state.rot.x, state.rot.y, state.rot.z);
 
-  // grab position
-  state.pos.lerp(state.posTarget, 0.12);
-  points.position.set(state.pos.x, state.pos.y, state.pos.z);
+  // dim the tree while inspecting a picture
+  const inspecting = state.focusIndex>=0;
+  state.dim += ((inspecting?0.32:1) - state.dim)*0.08;
+  uniforms.uDim.value = state.dim;
+  document.getElementById('title').style.opacity = inspecting ? 0 : '';
+  updateCaption(state.focusIndex);
+
+  // place each picture: orbit with the tree, or fly to the focus slot
+  _euler.set(state.rot.x, state.rot.y, state.rot.z);
+  images.forEach((im, idx)=>{
+    const focused = idx===state.focusIndex;
+    let target, scale, op;
+    if(focused){
+      target = FOCUS_SLOT; scale = 2.5; op = 1;
+    } else {
+      const bob = Math.sin(t*0.8 + im.phase)*0.12;
+      target = im.home.clone().applyEuler(_euler);
+      target.y += TREE_Y + bob;
+      scale = 1; op = inspecting ? 0.12 : 1;
+    }
+    im.grp.position.lerp(target, focused?0.12:0.1);
+    const sc = im.grp.scale.x + (scale - im.grp.scale.x)*0.12;
+    im.grp.scale.setScalar(sc);
+    im.grp.quaternion.copy(camera.quaternion);      // billboard toward camera
+    im.halo.material.opacity  += (op*0.9 - im.halo.material.opacity)*0.12;
+    im.frame.material.opacity += (op*0.9 - im.frame.material.opacity)*0.12;
+    if(im.photoMat.map) im.photoMat.opacity += (op - im.photoMat.opacity)*0.12;
+  });
 
   renderer.render(scene, camera);
 }
@@ -374,7 +499,7 @@ document.getElementById('go').addEventListener('click', async ()=>{
     if(/Permission|NotAllowed|denied/i.test(msg))
       msg = 'Camera access was blocked. Enable the camera for this page in your browser settings, then reload.';
     document.getElementById('errMsg').innerHTML =
-      '⚠️ '+msg+'<br><br>Tip: open this file in Chrome and allow the camera when prompted.';
+      '⚠️ '+msg+'<br><br>Tip: open this page in Chrome and allow the camera when prompted.';
     errBox.style.display='flex';
   }
 });
