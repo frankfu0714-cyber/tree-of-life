@@ -268,7 +268,7 @@ const state = {
   spinVel:0.0016, steering:false, anyFist:false,
   pointing:false, pointX:0.5, pointY:0.5, hover:-1, dwell:0, focusIndex:-1, dim:1,
 };
-const IDLE_SPIN=0.0016, FAST_SPIN=0.34, DWELL_NEEDED=0.32;
+const IDLE_SPIN=0.0016, FAST_SPIN=0.34, DWELL_NEEDED=0.28;
 
 // ---------- landmark helpers ----------
 const dist=(a,b)=>Math.hypot(a.x-b.x, a.y-b.y, (a.z||0)-(b.z||0));
@@ -311,7 +311,7 @@ function onResults(res){
   const ph=info.find(h=>h.isPoint);
   if(ph && !state.anyFist){
     state.pointing=true; state.pointX=1-ph.ix; state.pointY=ph.iy;
-    let best=0.42, hv=-1;
+    let best=0.46, hv=-1;
     images.forEach((im,idx)=>{ if(idx===state.focusIndex) return; const s=project01(im.grp.position); const d=Math.hypot(s.x-state.pointX,s.y-state.pointY); if(d<best){best=d;hv=idx;} });
     // stickiness: keep current hover if still reasonably close
     if(state.hover>=0 && state.hover!==state.focusIndex){
@@ -358,11 +358,12 @@ function initHands(video){
 // ---------- loop ----------
 const clock=new THREE.Clock(); const _euler=new THREE.Euler();
 const FOCUS_SLOT=new THREE.Vector3(0, TREE_Y, 7.0);
-let lastHover=-1;
+let lastHover=-1, prevT=0;
 
 function animate(){
   requestAnimationFrame(animate);
-  const t=clock.getElapsedTime(), dt=Math.min(clock.getDelta(),0.05);
+  const t=clock.getElapsedTime();
+  let dt=Math.min(t-prevT,0.05); prevT=t;
   uniforms.uTime.value=t;
 
   // smooth palette
@@ -381,9 +382,11 @@ function animate(){
 
   // dwell-to-commit selection
   if(state.pointing){
-    if(state.hover>=0 && state.hover===lastHover) state.dwell+=dt; else state.dwell=0;
-    lastHover=state.hover;
-    if(state.dwell>=DWELL_NEEDED && state.hover>=0) state.focusIndex=state.hover;
+    if(state.hover>=0){
+      if(state.hover===lastHover) state.dwell+=dt; else state.dwell=0;
+      lastHover=state.hover;
+      if(state.dwell>=DWELL_NEEDED) state.focusIndex=state.hover;
+    } else { state.dwell=Math.max(0, state.dwell-dt*1.5); }   // forgive brief jitter, don't hard-reset
   } else { state.dwell=0; lastHover=-1; state.focusIndex=-1; }
 
   // reticle UI
