@@ -103,6 +103,7 @@
     <button class="pill" data-style="sakura">Sakura</button>
     <button class="pill" data-style="golden">Golden</button>
     <button class="pill" data-style="christmas">Christmas</button>
+    <button class="pill" data-style="romance">Romance ♥</button>
   </div>
 
   <h3>Photos &amp; captions</h3>
@@ -183,10 +184,11 @@ const MODE = (CARD_ID || CARD_DATA) ? 'gift' : 'builder';
 
 /* ---- styles ---- */
 const STYLES = {
-  aurora: { low:0x2fe6a0, high:0x46d8ff, accent:'#3ef0c4', accent2:'#46d8ff', bg0:'#03060a', bg1:'#06121a', tint:0x8ffae0 },
-  sakura: { low:0xff7fb0, high:0xffe2ef, accent:'#ff9ccd', accent2:'#ffd0e6', bg0:'#0c0410', bg1:'#1d0a22', tint:0xffc8e2 },
-  golden: { low:0xf0962a, high:0xffe98a, accent:'#ffce56', accent2:'#ffe6a0', bg0:'#0c0702', bg1:'#1b1305', tint:0xffe2a0 },
-  christmas: { low:0x1f9e4b, high:0xffd24a, accent:'#ff5b5b', accent2:'#4fd07a', bg0:'#050f0a', bg1:'#0a1d12', tint:0xffe2a0 },
+  aurora: { low:0x2fe6a0, high:0x46d8ff, accent:'#3ef0c4', accent2:'#46d8ff', bg0:'#03060a', bg1:'#06121a', tint:0x8ffae0, shape:'tree' },
+  sakura: { low:0xff7fb0, high:0xffe2ef, accent:'#ff9ccd', accent2:'#ffd0e6', bg0:'#0c0410', bg1:'#1d0a22', tint:0xffc8e2, shape:'tree' },
+  golden: { low:0xf0962a, high:0xffe98a, accent:'#ffce56', accent2:'#ffe6a0', bg0:'#0c0702', bg1:'#1b1305', tint:0xffe2a0, shape:'tree' },
+  christmas: { low:0x1f9e4b, high:0xffd24a, accent:'#ff5b5b', accent2:'#4fd07a', bg0:'#050f0a', bg1:'#0a1d12', tint:0xffe2a0, shape:'cone' },
+  romance: { low:0xff2d6b, high:0xff9ed1, accent:'#ff4d79', accent2:'#ffaecb', bg0:'#10040a', bg1:'#240a16', tint:0xffc0d8, shape:'heart' },
 };
 const PHOTO_POS = [[-1.5,-2.5,2.3],[2.1,-0.3,1.9],[-2.5,1.4,1.6],[2.4,2.7,1.4],[0.0,4.7,1.3]];
 const DEMO = [
@@ -213,19 +215,45 @@ const COUNT=7600;
 const home=new Float32Array(COUNT*3), tArr=new Float32Array(COUNT), bArr=new Float32Array(COUNT),
       randDir=new Float32Array(COUNT*3), seed=new Float32Array(COUNT), psize=new Float32Array(COUNT);
 let p=0;
-function put(x,y,z,sz){ home[p*3]=x;home[p*3+1]=y;home[p*3+2]=z;
+function put(x,y,z,sz){ if(p>=COUNT) return; home[p*3]=x;home[p*3+1]=y;home[p*3+2]=z;
   tArr[p]=THREE.MathUtils.clamp((y+3.5)/6.5+(Math.random()*2-1)*0.12,0,1); bArr[p]=0.78+Math.random()*0.5;
   let rx=Math.random()*2-1,ry=Math.random()*2-1,rz=Math.random()*2-1; const rl=Math.hypot(rx,ry,rz)||1;
   randDir[p*3]=rx/rl;randDir[p*3+1]=ry/rl;randDir[p*3+2]=rz/rl; seed[p]=Math.random()*6.283; psize[p]=sz; p++; }
 const rnd=(a,b)=>a+Math.random()*(b-a);
-for(let i=0;i<700;i++){const a=Math.random()*Math.PI*2,r=rnd(0.2,3.4)*Math.pow(Math.random(),0.6),y=-3.6+Math.random()*0.9; put(Math.cos(a)*r,y-r*0.15,Math.sin(a)*r*0.6,rnd(5,9));}
-for(let i=0;i<900;i++){const t=Math.random(),y=-3.0+t*3.4,r=(0.45*(1-t*0.6))*Math.sqrt(Math.random()),a=Math.random()*Math.PI*2; put(Math.cos(a)*r,y,Math.sin(a)*r,rnd(6,11));}
-for(let b=0;b<7;b++){const baseA=(b/7)*Math.PI*2+rnd(-0.3,0.3),lean=rnd(2.0,3.2),startY=rnd(-0.2,0.8);
-  for(let i=0;i<130;i++){const t=i/130,x=Math.cos(baseA)*lean*t*t,z=Math.sin(baseA)*lean*t*t*0.8,y=startY+t*2.6,jit=0.18*(0.3+t); put(x+rnd(-jit,jit),y+rnd(-jit,jit),z+rnd(-jit,jit),rnd(5,9));}}
-const cC=new THREE.Vector3(0,2.7,0), rem=COUNT-p;
-for(let i=0;i<rem;i++){const u=Math.random(),v=Math.random(),th=u*Math.PI*2,ph=Math.acos(2*v-1),rad=Math.pow(Math.random(),0.5);
-  const x=cC.x+Math.sin(ph)*Math.cos(th)*3.3*rad,y=cC.y+Math.cos(ph)*2.5*rad,z=cC.z+Math.sin(ph)*Math.sin(th)*3.3*rad;
-  put(x,y,z, Math.random()<0.06?rnd(13,20):rnd(4,10));}
+/* ---- shape generators (each fills exactly COUNT particles) ---- */
+function fillTree(){
+  for(let i=0;i<700;i++){const a=Math.random()*Math.PI*2,r=rnd(0.2,3.4)*Math.pow(Math.random(),0.6),y=-3.6+Math.random()*0.9; put(Math.cos(a)*r,y-r*0.15,Math.sin(a)*r*0.6,rnd(5,9));}
+  for(let i=0;i<900;i++){const t=Math.random(),y=-3.0+t*3.4,r=(0.45*(1-t*0.6))*Math.sqrt(Math.random()),a=Math.random()*Math.PI*2; put(Math.cos(a)*r,y,Math.sin(a)*r,rnd(6,11));}
+  for(let b=0;b<7;b++){const baseA=(b/7)*Math.PI*2+rnd(-0.3,0.3),lean=rnd(2.0,3.2),startY=rnd(-0.2,0.8);
+    for(let i=0;i<130;i++){const t=i/130,x=Math.cos(baseA)*lean*t*t,z=Math.sin(baseA)*lean*t*t*0.8,y=startY+t*2.6,jit=0.18*(0.3+t); put(x+rnd(-jit,jit),y+rnd(-jit,jit),z+rnd(-jit,jit),rnd(5,9));}}
+  const cC=new THREE.Vector3(0,2.7,0), rem=COUNT-p;
+  for(let i=0;i<rem;i++){const u=Math.random(),v=Math.random(),th=u*Math.PI*2,ph=Math.acos(2*v-1),rad=Math.pow(Math.random(),0.5);
+    const x=cC.x+Math.sin(ph)*Math.cos(th)*3.3*rad,y=cC.y+Math.cos(ph)*2.5*rad,z=cC.z+Math.sin(ph)*Math.sin(th)*3.3*rad;
+    put(x,y,z, Math.random()<0.06?rnd(13,20):rnd(4,10));}
+}
+function fillCone(){
+  const baseY=-3.4, H=7.0, baseR=2.7;
+  for(let i=0;i<350;i++){ const t=Math.random(); put(rnd(-0.18,0.18), baseY-0.5+t*0.7, rnd(-0.18,0.18), rnd(5,9)); } // trunk
+  for(let i=0;i<520;i++){ const a=Math.random()*Math.PI*2, ph=Math.acos(2*Math.random()-1), r=Math.pow(Math.random(),0.5)*0.5; // star topper
+    put(Math.sin(ph)*Math.cos(a)*r, baseY+H+0.2+Math.cos(ph)*r*0.8, Math.sin(ph)*Math.sin(a)*r, Math.random()<0.45?rnd(12,19):rnd(5,9)); }
+  const rem=COUNT-p;
+  for(let i=0;i<rem;i++){ const t=Math.pow(Math.random(),0.85), y=baseY+t*H;
+    const tier=0.70+0.30*Math.abs(Math.sin(t*Math.PI*3.5)); // layered Christmas-tree ripple
+    const maxR=baseR*(1-t)*tier, r=maxR*Math.sqrt(Math.random()), a=Math.random()*Math.PI*2, j=0.07;
+    put(Math.cos(a)*r+rnd(-j,j), y+rnd(-j,j), Math.sin(a)*r*0.92+rnd(-j,j), rnd(4,9)); }
+}
+function fillHeart(){
+  const S=0.205, cy=0.7;
+  for(let i=0;i<COUNT;i++){ const th=Math.random()*Math.PI*2;
+    const hx=16*Math.pow(Math.sin(th),3), hy=13*Math.cos(th)-5*Math.cos(2*th)-2*Math.cos(3*th)-Math.cos(4*th);
+    const f=Math.pow(Math.random(),0.5), zr=Math.sqrt(Math.max(0,1-f*f));
+    const x=hx*S*f, y=hy*S*f+cy, z=(Math.random()*2-1)*1.35*zr;
+    put(x,y,z, Math.random()<0.05?rnd(11,17):rnd(4,9)); }
+}
+const SHAPES={ tree:fillTree, cone:fillCone, heart:fillHeart };
+let currentShape='tree';
+function buildShape(shape){ p=0; (SHAPES[shape]||fillTree)(); while(p<COUNT){ put(rnd(-0.05,0.05),-3.5,rnd(-0.05,0.05),rnd(2,4)); } }
+buildShape('tree');
 
 const geo=new THREE.BufferGeometry();
 geo.setAttribute('aHome',new THREE.BufferAttribute(home,3));
@@ -251,7 +279,11 @@ const mat=new THREE.ShaderMaterial({ uniforms, transparent:true, depthWrite:fals
     void main(){ float d=length(gl_PointCoord-vec2(0.5)); float a=smoothstep(0.5,0.0,d); a=pow(a,1.7); gl_FragColor=vec4(vColor*vGlow*uDim,a*uDim); }`
 });
 const tree=new THREE.Group(); tree.position.y=TREE_Y;
-const points=new THREE.Points(geo,mat); points.renderOrder=0; tree.add(points); scene.add(tree);
+const points=new THREE.Points(geo,mat); points.renderOrder=0; points.frustumCulled=false; tree.add(points); scene.add(tree);
+function rebuildShape(shape){ if(shape===currentShape) return; currentShape=shape; buildShape(shape);
+  geo.attributes.position.array.set(home);
+  ['aHome','aT','aB','aRand','aSeed','aSize','position'].forEach(k=>{ geo.attributes[k].needsUpdate=true; });
+}
 
 /* ---- image planes (dynamic) ---- */
 function makeGlow(){ const c=document.createElement('canvas'); c.width=c.height=128; const g=c.getContext('2d');
@@ -288,7 +320,7 @@ function setImages(items){
     const back=new THREE.Mesh(new THREE.PlaneGeometry(PW,PH),bm); back.rotation.y=Math.PI; back.position.z=-0.002; back.renderOrder=3; card.add(back);
     if(it.url) loader.load(it.url, tex=>{ if(tex.colorSpace!==undefined) tex.colorSpace=THREE.SRGBColorSpace; pm.map=tex; pm.color.set(0xffffff); pm.needsUpdate=true; });
     grp.position.set(pos[0],TREE_Y+pos[1],pos[2]); scene.add(grp);
-    images.push({grp,card,halo,frame,photoMat:pm,backMat:bm,home:new THREE.Vector3(pos[0],pos[1],pos[2]),phase:Math.random()*6.28,spin:Math.random()*6.28,title:it.title||''});
+    images.push({grp,card,halo,frame,photo,back,photoMat:pm,backMat:bm,home:new THREE.Vector3(pos[0],pos[1],pos[2]),phase:Math.random()*6.28,spin:Math.random()*6.28,title:it.title||''});
   });
 }
 
@@ -298,6 +330,7 @@ function applyStyle(name){ const s=STYLES[name]; if(!s) return; currentStyle=nam
   targetLow.setHex(s.low); targetHigh.setHex(s.high);
   const r=document.documentElement.style; r.setProperty('--accent',s.accent); r.setProperty('--accent2',s.accent2); r.setProperty('--bg0',s.bg0); r.setProperty('--bg1',s.bg1);
   images.forEach(im=>{ im.halo.material.color.setHex(s.tint); im.frame.material.color.setHex(s.tint); });
+  rebuildShape(s.shape||'tree');
 }
 
 /* ---- generative music (Tone.js) ---- */
@@ -401,7 +434,13 @@ function animate(){ requestAnimationFrame(animate);
     if(focused){ target=FOCUS_SLOT; scale=2.4; op=1; } else { const bob=Math.sin(t*0.8+im.phase)*0.12; target=im.home.clone().applyEuler(_eu); target.y+=TREE_Y+bob; scale=1; op=inspecting?0.32:1; }
     im.grp.position.lerp(target,focused?0.14:0.1); const sc=im.grp.scale.x+(scale-im.grp.scale.x)*0.14; im.grp.scale.setScalar(sc);
     im.halo.quaternion.copy(camera.quaternion);
-    im.spin+=(focused?0.9:0.35)*dt; im.card.rotation.y=im.spin;
+    if(focused){ // the held photo settles facing you and stops spinning
+      let a=im.card.rotation.y%(Math.PI*2); if(a<0)a+=Math.PI*2; const tgt=a>Math.PI?Math.PI*2:0;
+      im.card.rotation.y+=(tgt-a)*0.16; im.spin=im.card.rotation.y;
+    } else { im.spin+=0.35*dt; im.card.rotation.y=im.spin; }
+    // depth: when a photo orbits to the far side of the tree, let the particles cover it
+    const front=focused||im.grp.position.z>=0; const ro=front?2:-6;
+    im.halo.renderOrder=ro; im.frame.renderOrder=ro+1; im.back.renderOrder=ro+2; im.photo.renderOrder=ro+3;
     const ho=focused?1:(inspecting?0.18:0.85); im.halo.material.opacity+=(ho-im.halo.material.opacity)*0.12;
     im.frame.material.opacity+=(op*0.9-im.frame.material.opacity)*0.12;
     if(im.photoMat.map) im.photoMat.opacity+=(op-im.photoMat.opacity)*0.12; im.backMat.opacity+=(op-im.backMat.opacity)*0.12;
