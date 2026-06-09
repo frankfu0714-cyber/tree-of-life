@@ -184,7 +184,7 @@ const COUNT=7600;
 const home=new Float32Array(COUNT*3), tArr=new Float32Array(COUNT), bArr=new Float32Array(COUNT),
       randDir=new Float32Array(COUNT*3), seed=new Float32Array(COUNT), psize=new Float32Array(COUNT);
 let p=0;
-function put(x,y,z,sz){ home[p*3^=x;home[p*3+1]=y;home[p*3+2]=z;
+function put(x,y,z,sz){ home[p*3]=x;home[p*3+1]=y;home[p*3+2]=z;
   tArr[p]=THREE.MathUtils.clamp((y+3.5)/6.5+(Math.random()*2-1)*0.12,0,1); bArr[p]=0.78+Math.random()*0.5;
   let rx=Math.random()*2-1,ry=Math.random()*2-1,rz=Math.random()*2-1; const rl=Math.hypot(rx,ry,rz)||1;
   randDir[p*3]=rx/rl;randDir[p*3+1]=ry/rl;randDir[p*3+2]=rz/rl; seed[p]=Math.random()*6.283; psize[p]=sz; p++; }
