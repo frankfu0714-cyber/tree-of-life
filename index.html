@@ -447,7 +447,7 @@ function animate(){ requestAnimationFrame(animate);
   if(state.steering){ state.rot.lerp(state.rotTarget,0.08); } else { state.rot.y+=state.spinVel; state.rot.x+=(0-state.rot.x)*0.06; state.rot.z+=(0-state.rot.z)*0.06; }
   tree.rotation.set(state.rot.x,state.rot.y,state.rot.z);
   // galaxy: tip the spinning disk toward the viewer so the spiral swirls around its own centre
-  const tiltTarget=currentShape==='galaxy'?1.05:0; galaxyTilt.rotation.x+=(tiltTarget-galaxyTilt.rotation.x)*0.05;
+  const tiltTarget=currentShape==='galaxy'?0.52:0; galaxyTilt.rotation.x+=(tiltTarget-galaxyTilt.rotation.x)*0.05;
   const inspecting=state.focusIndex>=0; state.dim+=((inspecting?0.4:1)-state.dim)*0.08; uniforms.uDim.value=state.dim;
   const ttl=document.getElementById('title'); if(ttl) ttl.style.opacity=inspecting?0:''; updateCaption(state.focusIndex);
   _eu.set(state.rot.x,state.rot.y,state.rot.z);
