@@ -150,7 +150,8 @@ const sb = (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase)
 
 const params = new URLSearchParams(location.search);
 const CARD_ID = params.get('c');
-const MODE = CARD_ID ? 'gift' : 'builder';
+const CARD_DATA = params.get('d');
+const MODE = (CARD_ID || CARD_DATA) ? 'gift' : 'builder';
 
 /* ---- styles ---- */
 const STYLES = {
@@ -183,7 +184,7 @@ const COUNT=7600;
 const home=new Float32Array(COUNT*3), tArr=new Float32Array(COUNT), bArr=new Float32Array(COUNT),
       randDir=new Float32Array(COUNT*3), seed=new Float32Array(COUNT), psize=new Float32Array(COUNT);
 let p=0;
-function put(x,y,z,sz){ home[p*3]=x;home[p*3+1]=y;home[p*3+2]=z;
+function put(x,y,z,sz){ home[p*3^=x;home[p*3+1]=y;home[p*3+2]=z;
   tArr[p]=THREE.MathUtils.clamp((y+3.5)/6.5+(Math.random()*2-1)*0.12,0,1); bArr[p]=0.78+Math.random()*0.5;
   let rx=Math.random()*2-1,ry=Math.random()*2-1,rz=Math.random()*2-1; const rl=Math.hypot(rx,ry,rz)||1;
   randDir[p*3]=rx/rl;randDir[p*3+1]=ry/rl;randDir[p*3+2]=rz/rl; seed[p]=Math.random()*6.283; psize[p]=sz; p++; }
@@ -376,14 +377,35 @@ function initBuilder(){
   document.getElementById('createBtn').addEventListener('click',createGift);
 }
 
+function encodeCard(card){ return encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(card))))); }
+function showGiftResult(link){
+  const res=document.getElementById('result'); res.style.display='block';
+  res.innerHTML=`<b>Your gift is ready 🎁</b><div class="linkbox"><input id="shareLink" readonly value="${link}"><button class="pill" id="copyLink">Copy</button></div><div style="margin-top:8px"><a href="${link}" target="_blank">Open preview ↗</a></div>`;
+  document.getElementById('copyLink').addEventListener('click',()=>{ const inp=document.getElementById('shareLink'); inp.select(); navigator.clipboard?.writeText(inp.value); toast('Link copied!'); });
+}
 async function createGift(){
   const items=builderItems.filter(Boolean);
-  if(items.length===0){ toast('Add at least one photo first.'); return; }
-  if(!sb){ toast('Backend not connected yet — preview only for now.'); return; }
+  const hasUploads=items.some(it=>it.file);
   const btn=document.getElementById('createBtn'); btn.disabled=true; btn.textContent='Creating…';
   try{
-    const folder=(crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random())).replace(/[^a-z0-9]/gi,'');
+    const meta={ style:currentStyle, music:music.mood,
+      to_name:document.getElementById('toName').value||'',
+      from_name:document.getElementById('fromName').value||'',
+      message:document.getElementById('message').value||'' };
+    if(!hasUploads){
+      // No uploaded files — everything is URL-based, so we can make a self-contained link (no backend needed)
+      let outItems;
+      if(items.length===0){ outItems = DEMO.map(d=>({url:d.url, title:d.title})); }
+      else { outItems = items.map(it=>({url:it.url, title:it.title||''})); }
+      const card={...meta, items:outItems};
+      const link=`${location.origin}${location.pathname}?d=${encodeCard(card)}`;
+      showGiftResult(link);
+      btn.disabled=false; btn.textContent='Create gift link'; return;
+    }
+    // Uploaded photos need file storage
+    if(!sb){ toast('Uploaded photos need the backend connected. Tip: the default photos make an instant link with no setup.'); btn.disabled=false; btn.textContent='Create gift link'; return; }
     const outItems=[];
+    const folder=(crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random())).replace(/[^a-z0-9]/gi,'');
     for(let i=0;i<items.length;i++){ const f=items[i].file; const ext=(f.name.split('.').pop()||'jpg').toLowerCase();
       const path=`${folder}/${i}.${ext}`;
       const up=await sb.storage.from('photos').upload(path,f,{upsert:true,contentType:f.type});
@@ -391,14 +413,10 @@ async function createGift(){
       const pub=sb.storage.from('photos').getPublicUrl(path).data.publicUrl;
       outItems.push({url:pub,title:items[i].title||''});
     }
-    const row={ style:currentStyle, music:music.mood, to_name:document.getElementById('toName').value||'',
-      from_name:document.getElementById('fromName').value||'', message:document.getElementById('message').value||'', items:outItems };
+    const row={...meta, items:outItems};
     const ins=await sb.from('cards').insert(row).select('id').single();
     if(ins.error) throw ins.error;
-    const link=`${location.origin}${location.pathname}?c=${ins.data.id}`;
-    const res=document.getElementById('result'); res.style.display='block';
-    res.innerHTML=`<b>Your gift is ready 🎁</b><div class="linkbox"><input id="shareLink" readonly value="${link}"><button class="pill" id="copyLink">Copy</button></div><div style="margin-top:8px"><a href="${link}" target="_blank">Open preview ↗</a></div>`;
-    document.getElementById('copyLink').addEventListener('click',()=>{ const inp=document.getElementById('shareLink'); inp.select(); navigator.clipboard?.writeText(inp.value); toast('Link copied!'); });
+    showGiftResult(`${location.origin}${location.pathname}?c=${ins.data.id}`);
   }catch(e){ console.error(e); toast('Could not create the gift: '+(e.message||e)); }
   btn.disabled=false; btn.textContent='Create gift link';
 }
@@ -407,10 +425,15 @@ async function createGift(){
 async function initGift(){
   document.getElementById('title').style.display='none';
   document.getElementById('loading').style.display='flex';
-  if(!sb){ document.getElementById('loading').textContent='This gift link needs the site backend to be connected.'; return; }
   let card=null;
-  try{ const q=await sb.from('cards').select('*').eq('id',CARD_ID).single(); if(q.error) throw q.error; card=q.data; }
-  catch(e){ document.getElementById('loading').textContent='Sorry — this gift could not be found.'; return; }
+  if(CARD_DATA){
+    try{ card=JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(CARD_DATA))))); }
+    catch(e){ document.getElementById('loading').textContent='Sorry — this gift link looks broken.'; return; }
+  } else {
+    if(!sb){ document.getElementById('loading').textContent='This gift link needs the site backend to be connected.'; return; }
+    try{ const q=await sb.from('cards').select('*').eq('id',CARD_ID).single(); if(q.error) throw q.error; card=q.data; }
+    catch(e){ document.getElementById('loading').textContent='Sorry — this gift could not be found.'; return; }
+  }
   document.getElementById('loading').style.display='none';
   applyStyle(card.style||'aurora'); music.mood=card.music||'calm'; setImages(card.items||[]);
   // envelope
