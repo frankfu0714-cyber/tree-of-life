@@ -382,7 +382,8 @@ async function startMusic(){
 }
 function stopMusic(){ if(music.loop) Tone.Transport.pause(); music.started=false; updateMusicBtn(); }
 function toggleMusic(){ music.started?stopMusic():startMusic(); }
-function setMood(m){ music.mood=m; if(music.started) Tone.Transport.bpm.value=(MOODS[m]||MOODS.calm).bpm; }
+function playMoodHit(){ if(!music.synth) return; const mm=MOODS[music.mood]||MOODS.calm; const ns=[mm.scale[0], mm.scale[Math.min(2,mm.scale.length-1)], mm.scale[mm.scale.length-1]].map(d=>m2f(mm.root+d)); music.synth.set({oscillator:{type:mm.wave}}); music.synth.triggerAttackRelease(ns,'2n',Tone.now(),0.6); if(music.bell) music.bell.triggerAttackRelease(m2f(mm.root+mm.scale[mm.scale.length-1]+24),'8n',Tone.now()+0.18,0.5); }
+async function setMood(m){ music.mood=m; if(!music.started){ await startMusic(); } else { Tone.Transport.bpm.value=(MOODS[m]||MOODS.calm).bpm; } playMoodHit(); }
 function updateMusicBtn(){ const b=document.getElementById('musicBtn'); b.textContent=music.started?'♪ Music ✓':'♪ Music'; b.classList.toggle('sel',music.started); }
 
 /* ---- gestures (optional, lazy) ---- */
@@ -493,7 +494,7 @@ function initBuilder(){
   document.getElementById('builderToggle').style.display='block';
   buildSlots(); refreshPreview();
   document.querySelectorAll('#styleRow .pill').forEach(b=> b.addEventListener('click',()=>{ document.querySelectorAll('#styleRow .pill').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); applyStyle(b.dataset.style); }));
-  document.querySelectorAll('#moodRow .pill').forEach(b=> b.addEventListener('click',()=>{ document.querySelectorAll('#moodRow .pill').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); setMood(b.dataset.mood); if(!music.started) startMusic(); }));
+  document.querySelectorAll('#moodRow .pill').forEach(b=> b.addEventListener('click',()=>{ document.querySelectorAll('#moodRow .pill').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); setMood(b.dataset.mood); }));
   document.getElementById('builderToggle').addEventListener('click',()=> document.getElementById('builder').classList.toggle('hidden'));
   if(!sb){ const n=document.getElementById('cfgNote'); n.style.display='block'; n.textContent='Sharing turns on once your Supabase keys are added. You can still preview everything now.'; }
   document.getElementById('createBtn').addEventListener('click',createGift);
