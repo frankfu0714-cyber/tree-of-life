@@ -475,13 +475,25 @@ animate();
 let toastT; function toast(msg){ const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('show'),3200); }
 
 /* ===================== BUILDER LOGIC ===================== */
+const MAX_UPLOAD = 3*1024*1024; // 3 MB per photo (free-tier friendly)
+function compressImage(file, maxEdge, quality){ return new Promise((resolve,reject)=>{
+  const img=new Image(); const u=URL.createObjectURL(file);
+  img.onload=()=>{ URL.revokeObjectURL(u); let w=img.naturalWidth, h=img.naturalHeight; const sc=Math.min(1, maxEdge/Math.max(w,h)); w=Math.max(1,Math.round(w*sc)); h=Math.max(1,Math.round(h*sc));
+    const c=document.createElement('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(img,0,0,w,h);
+    c.toBlob(b=> b?resolve(b):reject(new Error('compress failed')), 'image/jpeg', quality); };
+  img.onerror=()=>{ URL.revokeObjectURL(u); reject(new Error('load failed')); }; img.src=u; }); }
 const builderItems=[null,null,null,null,null]; // {url,title,file}
 function buildSlots(){ const wrap=document.getElementById('slots'); wrap.innerHTML='';
   for(let i=0;i<5;i++){ const row=document.createElement('div'); row.className='slot';
     row.innerHTML=`<label class="thumb"><span>＋</span><input type="file" accept="image/*" style="display:none"></label><input type="text" placeholder="Caption ${i+1} (optional)">`;
     const fileInput=row.querySelector('input[type=file]'), thumb=row.querySelector('.thumb'), cap=row.querySelector('input[type=text]');
-    fileInput.addEventListener('change',e=>{ const f=e.target.files[0]; if(!f)return; const url=URL.createObjectURL(f);
-      builderItems[i]={url,title:cap.value,file:f}; thumb.innerHTML=`<img src="${url}">`; refreshPreview(); });
+    fileInput.addEventListener('change',async e=>{ const f=e.target.files[0]; if(!f)return;
+      if(!/^image\//.test(f.type)){ toast('Please choose an image file.'); e.target.value=''; return; }
+      if(f.size>MAX_UPLOAD){ toast(`That photo is ${(f.size/1048576).toFixed(1)} MB — please use one under ${MAX_UPLOAD/1048576|0} MB.`); e.target.value=''; return; }
+      thumb.innerHTML='<span>…</span>';
+      let blob=f; try{ blob=await compressImage(f,1600,0.82); }catch(err){ blob=f; }
+      const url=URL.createObjectURL(blob);
+      builderItems[i]={url,title:cap.value,file:blob}; thumb.innerHTML=`<img src="${url}">`; refreshPreview(); });
     cap.addEventListener('input',()=>{ if(builderItems[i]) builderItems[i].title=cap.value; if(images[i]) images[i].title=cap.value; });
     wrap.appendChild(row);
   }
@@ -529,9 +541,9 @@ async function createGift(){
     if(!sb){ toast('Uploaded photos need the backend connected. Tip: the default photos make an instant link with no setup.'); btn.disabled=false; btn.textContent='Create gift link'; return; }
     const outItems=[];
     const folder=(crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random())).replace(/[^a-z0-9]/gi,'');
-    for(let i=0;i<items.length;i++){ const f=items[i].file; const ext=(f.name.split('.').pop()||'jpg').toLowerCase();
+    for(let i=0;i<items.length;i++){ const f=items[i].file; const ext=(f.type&&f.type.includes('png'))?'png':'jpg';
       const path=`${folder}/${i}.${ext}`;
-      const up=await sb.storage.from('photos').upload(path,f,{upsert:true,contentType:f.type});
+      const up=await sb.storage.from('photos').upload(path,f,{upsert:true,contentType:f.type||'image/jpeg'});
       if(up.error) throw up.error;
       const pub=sb.storage.from('photos').getPublicUrl(path).data.publicUrl;
       outItems.push({url:pub,title:items[i].title||''});
