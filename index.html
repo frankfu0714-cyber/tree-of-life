@@ -254,14 +254,14 @@ function fillHeart(){
 }
 function fillGalaxy(){
   const arms=2, maxR=3.7, twist=1.7;
-  // bright core bulge
+  // bright core bulge (slightly flattened in y)
   for(let i=0;i<1300;i++){ const u=Math.random(),v=Math.random(),th=u*Math.PI*2,ph=Math.acos(2*v-1),rad=Math.pow(Math.random(),1.7)*0.72;
-    put(Math.sin(ph)*Math.cos(th)*rad, Math.cos(ph)*rad*0.7, Math.sin(ph)*Math.sin(th)*rad*0.7, Math.random()<0.12?rnd(12,20):rnd(4,9), 0.92+Math.random()*0.08); }
-  // spiral arms (flat disk in the x-y plane, facing the viewer)
+    put(Math.sin(ph)*Math.cos(th)*rad, Math.cos(ph)*rad*0.4, Math.sin(ph)*Math.sin(th)*rad, Math.random()<0.12?rnd(12,20):rnd(4,9), 0.92+Math.random()*0.08); }
+  // spiral arms — flat disk in the x-z plane so it spins around its own centre (like a record)
   for(let i=0;i<5300;i++){ const arm=Math.floor(Math.random()*arms), armA=(arm/arms)*Math.PI*2;
     const rt=Math.pow(Math.random(),0.6), r=0.35+rt*maxR;
     const ang=armA + r*twist + rnd(-0.35,0.35)*(0.3+(1-rt)*0.9), w=0.1+rt*0.4;
-    const x=r*Math.cos(ang)+rnd(-w,w), y=r*Math.sin(ang)+rnd(-w,w), z=rnd(-1,1)*(0.16+(1-rt)*0.5);
+    const x=r*Math.cos(ang)+rnd(-w,w), z=r*Math.sin(ang)+rnd(-w,w), y=rnd(-1,1)*(0.12+(1-rt)*0.3);
     put(x,y,z, rnd(3,8), THREE.MathUtils.clamp(1-rt*0.82+rnd(-0.1,0.1),0,1)); }
   // faint star halo
   const rem=COUNT-p;
@@ -297,7 +297,8 @@ const mat=new THREE.ShaderMaterial({ uniforms, transparent:true, depthWrite:fals
     void main(){ float d=length(gl_PointCoord-vec2(0.5)); float a=smoothstep(0.5,0.0,d); a=pow(a,1.7); gl_FragColor=vec4(vColor*vGlow*uDim,a*uDim); }`
 });
 const tree=new THREE.Group(); tree.position.y=TREE_Y;
-const points=new THREE.Points(geo,mat); points.renderOrder=0; points.frustumCulled=false; tree.add(points); scene.add(tree);
+const points=new THREE.Points(geo,mat); points.renderOrder=0; points.frustumCulled=false; tree.add(points);
+const galaxyTilt=new THREE.Group(); galaxyTilt.add(tree); scene.add(galaxyTilt);
 function rebuildShape(shape){ if(shape===currentShape) return; currentShape=shape; buildShape(shape);
   geo.attributes.position.array.set(home);
   ['aHome','aT','aB','aRand','aSeed','aSize','position'].forEach(k=>{ geo.attributes[k].needsUpdate=true; });
@@ -445,6 +446,8 @@ function animate(){ requestAnimationFrame(animate);
   const tv=state.anyFist?FAST_SPIN:IDLE_SPIN; state.spinVel+=(tv-state.spinVel)*0.06;
   if(state.steering){ state.rot.lerp(state.rotTarget,0.08); } else { state.rot.y+=state.spinVel; state.rot.x+=(0-state.rot.x)*0.06; state.rot.z+=(0-state.rot.z)*0.06; }
   tree.rotation.set(state.rot.x,state.rot.y,state.rot.z);
+  // galaxy: tip the spinning disk toward the viewer so the spiral swirls around its own centre
+  const tiltTarget=currentShape==='galaxy'?1.05:0; galaxyTilt.rotation.x+=(tiltTarget-galaxyTilt.rotation.x)*0.05;
   const inspecting=state.focusIndex>=0; state.dim+=((inspecting?0.4:1)-state.dim)*0.08; uniforms.uDim.value=state.dim;
   const ttl=document.getElementById('title'); if(ttl) ttl.style.opacity=inspecting?0:''; updateCaption(state.focusIndex);
   _eu.set(state.rot.x,state.rot.y,state.rot.z);
