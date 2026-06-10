@@ -41,7 +41,7 @@
 <body>
 <div class="wrap">
   <h1>🎵 Music Studio</h1>
-  <div class="sub">Eight different background-music styles for your Tree of Life. Tap a card to listen — each one plays a gentle, endless, generative loop (it improvises, so it never exactly repeats). Only one plays at a time. When you've found ones you love, tell me their names.</div>
+  <div class="sub">Thirteen background-music styles for your Tree of Life — including a real lo-fi beat. Tap a card to listen — each one plays a gentle, endless, generative loop (it improvises, so it never exactly repeats). Only one plays at a time. When you've found ones you love, tell me their names.</div>
 
   <div class="vol">🔊 Volume <input id="vol" type="range" min="-30" max="0" value="-9" step="1"></div>
   <div class="grid" id="grid"></div>
@@ -140,6 +140,64 @@ const STYLES = [
       const lp=new Tone.Loop(t=>{ k.triggerAttackRelease(ch[i%ch.length].map(d=>M(60+d)),'2n',t,.4);
         if(Math.random()<.4) k.triggerAttackRelease(M(72+pick([0,2,4,7,9])),'8n',t+ Tone.Time('4n').toSeconds(),.25); i++; },'1m').start(0);
       n.push(rev,cho,k,lp); } },
+
+  { id:'lofibeat', name:'Lo-fi Beat', emoji:'🎧', bpm:80, swing:0.22,
+    desc:'A real lo-fi groove — soft drums, warm Rhodes 7th chords, mellow bass and vinyl crackle. Cozy "study beats" vibe.',
+    build(n){ const rev=new Tone.Reverb({decay:3,wet:.22}).connect(masterChain());
+      const keys=new Tone.PolySynth(Tone.FMSynth).connect(rev);
+      keys.set({harmonicity:2,modulationIndex:3,envelope:{attack:.01,decay:.7,sustain:.18,release:1.1},modulationEnvelope:{attack:.01,decay:.35,sustain:0,release:.3}}); keys.volume.value=-15;
+      const bass=new Tone.MonoSynth({oscillator:{type:'sine'},envelope:{attack:.02,decay:.3,sustain:.5,release:.4},filterEnvelope:{baseFrequency:160,octaves:2}}).connect(masterChain()); bass.volume.value=-13;
+      const kick=new Tone.MembraneSynth({octaves:5,pitchDecay:.045}).connect(masterChain()); kick.volume.value=-7;
+      const snare=new Tone.NoiseSynth({noise:{type:'white'},envelope:{attack:.001,decay:.16,sustain:0}}).connect(new Tone.Filter(1800,'highpass').connect(masterChain())); snare.volume.value=-18;
+      const hat=new Tone.NoiseSynth({noise:{type:'white'},envelope:{attack:.001,decay:.035,sustain:0}}).connect(new Tone.Filter(8000,'highpass').connect(masterChain())); hat.volume.value=-26;
+      const crackle=new Tone.Noise('brown').start(); const cf=new Tone.Filter(1400,'lowpass'); crackle.connect(cf); cf.connect(masterChain()); crackle.volume.value=-33;
+      const ch=[[0,4,7,11,14],[-2,2,5,9,12],[-4,0,3,7,10],[-5,-1,2,5,9]]; let bar=0;
+      const cl=new Tone.Loop(t=>{ const c=ch[bar%ch.length]; keys.triggerAttackRelease(c.map(d=>M(60+d)),'1m',t,.38); bass.triggerAttackRelease(M(36+c[0]),'2n.',t,.85); bar++; },'1m').start(0);
+      const seq=new Tone.Sequence((t,s)=>{ hat.triggerAttackRelease('16n',t,(s%2?0.5:0.85)); if(s===0||s===4) kick.triggerAttackRelease('C1','8n',t,.9); if(s===2||s===6) snare.triggerAttackRelease('8n',t,.7); },[0,1,2,3,4,5,6,7],'8n').start(0);
+      n.push(rev,keys,bass,kick,snare,hat,crackle,cf,cl,seq); } },
+
+  { id:'marimba', name:'Marimba', emoji:'🌴', bpm:96,
+    desc:'Warm wooden mallets dancing in playful patterns. Sunny, upbeat and joyful.',
+    build(n){ const rev=new Tone.Reverb({decay:3,wet:.3}).connect(masterChain());
+      const m=new Tone.PolySynth(Tone.FMSynth).connect(rev);
+      m.set({harmonicity:4,modulationIndex:2,envelope:{attack:.001,decay:.5,sustain:0,release:.5},modulationEnvelope:{attack:.001,decay:.2,sustain:0,release:.2}}); m.volume.value=-12;
+      const sc=[0,2,4,7,9,12,14,16]; const root=60; let s=0; const order=[0,2,4,2,5,4,7,5,4,2];
+      const lp=new Tone.Loop(t=>{ const idx=order[s%order.length]; m.triggerAttackRelease(M(root+sc[idx%sc.length]),'8n',t,.6); if(Math.random()<.3) m.triggerAttackRelease(M(root+sc[(idx+2)%sc.length]+12),'16n',t+Tone.Time('16n').toSeconds(),.4); s++; },'8n').start(0);
+      n.push(rev,m,lp); } },
+
+  { id:'synth', name:'Dream Synth', emoji:'🌈', bpm:70,
+    desc:'Retro-dreamy analog pad with a soft pulsing arpeggio. Nostalgic, warm, a little magical.',
+    build(n){ const rev=new Tone.Reverb({decay:7,wet:.5}).connect(masterChain());
+      const dl=new Tone.FeedbackDelay({delayTime:'8n.',feedback:.35,wet:.3}).connect(rev);
+      const pad=new Tone.PolySynth(Tone.Synth).connect(rev); pad.set({oscillator:{type:'sawtooth'},envelope:{attack:.8,decay:.4,sustain:.7,release:3}}); pad.volume.value=-23;
+      const arp=new Tone.Synth({oscillator:{type:'triangle'},envelope:{attack:.005,decay:.2,sustain:.1,release:.4}}).connect(dl); arp.volume.value=-16;
+      const ch=[[0,3,7,10],[-2,2,5,8],[-4,0,3,7],[-1,2,5,9]]; let bar=0;
+      const cl=new Tone.Loop(t=>{ const c=ch[bar%ch.length]; pad.triggerAttackRelease(c.map(d=>M(48+d)),'1m',t,.5); bar++; },'1m').start(0);
+      const ax=[0,3,7,10,7,3]; let a=0;
+      const al=new Tone.Loop(t=>{ const c=ch[bar%ch.length]; arp.triggerAttackRelease(M(60+c[0]+ax[a%ax.length]),'16n',t,.5); a++; },'8n').start(0);
+      n.push(rev,dl,pad,arp,cl,al); } },
+
+  { id:'bossa', name:'Bossa Keys', emoji:'🍹', bpm:118, swing:0.12,
+    desc:'Smooth jazzy electric-piano chords with a gentle bossa sway. Classy, warm, easygoing.',
+    build(n){ const rev=new Tone.Reverb({decay:3,wet:.28}).connect(masterChain());
+      const ep=new Tone.PolySynth(Tone.FMSynth).connect(rev);
+      ep.set({harmonicity:2,modulationIndex:4,envelope:{attack:.01,decay:.8,sustain:.2,release:1},modulationEnvelope:{attack:.01,decay:.4,sustain:0,release:.4}}); ep.volume.value=-15;
+      const ch=[[0,4,7,11],[-3,0,4,9],[-5,-1,2,7],[-1,2,5,9]]; let bar=0;
+      const cl=new Tone.Loop(t=>{ const c=ch[bar%ch.length];
+        ep.triggerAttackRelease(c.map(d=>M(60+d)),'4n',t,.4);
+        ep.triggerAttackRelease(c.map(d=>M(60+d)),'8n',t+Tone.Time('4n.').toSeconds(),.3);
+        ep.triggerAttackRelease(c.map(d=>M(60+d)),'8n',t+Tone.Time('2n.').toSeconds(),.3);
+        bar++; },'1m').start(0);
+      n.push(rev,ep,cl); } },
+
+  { id:'celesta', name:'Celesta Sparkle', emoji:'✨', bpm:88,
+    desc:'Twinkling music-box-meets-celesta sparkles. Magical, whimsical, full of wonder.',
+    build(n){ const rev=new Tone.Reverb({decay:6,wet:.5}).connect(masterChain());
+      const c=new Tone.PolySynth(Tone.FMSynth).connect(rev);
+      c.set({harmonicity:3.5,modulationIndex:5,envelope:{attack:.001,decay:1.1,sustain:0,release:1},modulationEnvelope:{attack:.001,decay:.3,sustain:0,release:.3}}); c.volume.value=-13;
+      const sc=[0,2,4,7,9,12,14,16,19]; const root=72;
+      const lp=new Tone.Loop(t=>{ if(Math.random()<.8){ c.triggerAttackRelease(M(root+pick(sc)),'8n',t,.5+Math.random()*.3); } if(Math.random()<.25){ c.triggerAttackRelease(M(root+pick(sc)+12),'16n',t+Tone.Time('16n').toSeconds(),.35); } },'8n').start(0);
+      n.push(rev,c,lp); } },
 ];
 
 let active=null;
@@ -155,6 +213,7 @@ async function toggle(style, cardEl){
   if(wasOn) return;
   const nodes=[];
   Tone.Transport.bpm.value = style.bpm;
+  Tone.Transport.swing = style.swing || 0; Tone.Transport.swingSubdivision = '8n';
   style.build(nodes);
   active={ id:style.id, nodes };
   Tone.Transport.start('+0.05');
