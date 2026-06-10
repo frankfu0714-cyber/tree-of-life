@@ -512,10 +512,24 @@ function initBuilder(){
   document.getElementById('createBtn').addEventListener('click',createGift);
 }
 
+const EXPIRY_MS = 48*3600*1000; // trees gently fade away 48 hours after creation
+async function purgeExpired(){
+  if(!sb) return;
+  try{
+    const cutoff=new Date(Date.now()-EXPIRY_MS).toISOString();
+    const { data:old } = await sb.from('cards').select('id,items').lt('created_at',cutoff).limit(50);
+    if(old && old.length){
+      const paths=[];
+      old.forEach(c=>(c.items||[]).forEach(it=>{ const u=it.url||''; const k=u.indexOf('/photos/'); if(k>=0) paths.push(decodeURIComponent(u.slice(k+8))); }));
+      if(paths.length){ try{ await sb.storage.from('photos').remove(paths); }catch(e){} }
+      await sb.from('cards').delete().lt('created_at',cutoff);
+    }
+  }catch(e){}
+}
 function encodeCard(card){ return encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(card))))); }
 function showGiftResult(link){
   const res=document.getElementById('result'); res.style.display='block';
-  res.innerHTML=`<b>Your gift is ready 🎁</b><div class="linkbox"><input id="shareLink" readonly value="${link}"><button class="pill" id="copyLink">Copy</button></div><div style="margin-top:8px"><a href="${link}" target="_blank">Open preview ↗</a></div>`;
+  res.innerHTML=`<b>Your gift is ready 🎁</b><div class="linkbox"><input id="shareLink" readonly value="${link}"><button class="pill" id="copyLink">Copy</button></div><div style="margin-top:8px"><a href="${link}" target="_blank">Open preview ↗</a></div><div style="margin-top:6px;opacity:.6;font-size:12px">This tree stays alive for 48 hours, then gently fades away. 🥀</div>`;
   document.getElementById('copyLink').addEventListener('click',()=>{ const inp=document.getElementById('shareLink'); inp.select(); navigator.clipboard?.writeText(inp.value); toast('Link copied!'); });
 }
 async function createGift(){
@@ -532,7 +546,7 @@ async function createGift(){
       let outItems;
       if(items.length===0){ outItems = DEMO.map(d=>({url:d.url, title:d.title})); }
       else { outItems = items.map(it=>({url:it.url, title:it.title||''})); }
-      const card={...meta, items:outItems};
+      const card={...meta, items:outItems, t:Date.now()};
       const link=`${location.origin}${location.pathname}?d=${encodeCard(card)}`;
       showGiftResult(link);
       btn.disabled=false; btn.textContent='Create gift link'; return;
@@ -570,6 +584,12 @@ async function initGift(){
     try{ const q=await sb.from('cards').select('*').eq('id',CARD_ID).single(); if(q.error) throw q.error; card=q.data; }
     catch(e){ document.getElementById('loading').textContent='Sorry — this gift could not be found.'; return; }
   }
+  const createdMs = card.t ? card.t : (card.created_at ? new Date(card.created_at).getTime() : null);
+  if(createdMs && (Date.now()-createdMs) > EXPIRY_MS){
+    document.getElementById('loading').innerHTML='<div style="text-align:center;line-height:1.8">This tree has faded away 🥀<br><span style="opacity:.55;font-size:13px">Gifts last 48 hours</span></div>';
+    if(sb) purgeExpired();
+    return;
+  }
   document.getElementById('loading').style.display='none';
   applyStyle(card.style||'aurora'); music.mood=card.music||'calm'; setImages(card.items||[]);
   // envelope
@@ -588,6 +608,7 @@ document.getElementById('guideClose').addEventListener('click',()=>document.getE
 
 /* ---- boot ---- */
 if(MODE==='gift'){ initGift(); } else { initBuilder(); }
+if(sb) purgeExpired(); // opportunistically clean out trees older than 48h
 </script>
 </body>
 </html>
