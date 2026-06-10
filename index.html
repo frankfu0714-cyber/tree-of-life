@@ -11,6 +11,8 @@
   #gl{position:fixed;inset:0;display:block}
   #weather{position:fixed;inset:0;z-index:4;pointer-events:none}
   body.raining::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:3;background:radial-gradient(120% 80% at 50% 120%, rgba(90,130,180,.16), transparent 58%)}
+  body.sunny::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:3;background:radial-gradient(85% 60% at 50% -8%, rgba(255,210,120,.20), transparent 62%)}
+  body.snowing::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:3;background:radial-gradient(120% 90% at 50% 120%, rgba(200,220,255,.14), transparent 60%)}
   #cam{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);opacity:.10;filter:saturate(.6) blur(1px);pointer-events:none;display:none}
   /* shared overlays */
   #title{position:fixed;top:42px;left:50%;transform:translateX(-50%);z-index:5;text-align:center;pointer-events:none;transition:opacity .5s}
@@ -90,7 +92,7 @@
 <!-- floating tools -->
 <div id="tools">
   <button class="pill" id="musicBtn">♪ Music</button>
-  <button class="pill" id="weatherBtn">🌧 Rain</button>
+  <button class="pill" id="weatherBtn">🌦 Weather</button>
   <button class="pill" id="gestureBtn">✋ Gestures</button>
   <button class="pill" id="helpBtn">？ Guide</button>
 </div>
@@ -605,23 +607,41 @@ async function initGift(){
 }
 
 /* ---- shared tool buttons ---- */
-/* ---- weather (rain) ---- */
-const weather={mode:'none',canvas:null,ctx:null,drops:[],raf:null,w:0,h:0};
+/* ---- weather (rain / sunshine / snow) ---- */
+const WEATHER_MODES=['none','rain','sun','snow'];
+const WEATHER_LABEL={none:'🌦 Weather', rain:'🌧 Rain', sun:'☀️ Sun', snow:'❄️ Snow'};
+const weather={mode:'none',canvas:null,ctx:null,parts:[],raf:null,w:0,h:0,t:0};
 function resizeWeather(){ const c=weather.canvas; if(!c) return; weather.w=c.width=window.innerWidth; weather.h=c.height=window.innerHeight; }
-function newDrop(seeded){ return {x:Math.random()*weather.w, y:seeded?Math.random()*weather.h:-20, len:9+Math.random()*20, sp:6+Math.random()*8, a:0.07+Math.random()*0.18, drift:Math.random()*0.7-0.15}; }
-function rainFrame(){ const g=weather.ctx, W=weather.w, H=weather.h; if(!g) return; g.clearRect(0,0,W,H); g.lineWidth=1.1; g.lineCap='round';
-  for(const d of weather.drops){ g.strokeStyle='rgba(176,206,255,'+d.a.toFixed(3)+')'; g.beginPath(); g.moveTo(d.x,d.y); g.lineTo(d.x+d.drift*2.2,d.y+d.len); g.stroke();
-    d.y+=d.sp; d.x+=d.drift; if(d.y>H+24){ const nd=newDrop(false); d.x=nd.x; d.y=nd.y; d.len=nd.len; d.sp=nd.sp; d.a=nd.a; d.drift=nd.drift; } }
-  weather.raf=requestAnimationFrame(rainFrame); }
+function seedParts(mode){ weather.parts=[]; const W=weather.w, H=weather.h;
+  if(mode==='rain'){ const n=Math.round(W*0.16); for(let i=0;i<n;i++) weather.parts.push({x:Math.random()*W,y:Math.random()*H,len:9+Math.random()*20,sp:6+Math.random()*8,a:0.07+Math.random()*0.18,drift:Math.random()*0.7-0.15}); }
+  else if(mode==='snow'){ const n=Math.round(W*0.11); for(let i=0;i<n;i++) weather.parts.push({x:Math.random()*W,y:Math.random()*H,r:1+Math.random()*2.6,sp:0.5+Math.random()*1.4,a:0.35+Math.random()*0.5,ph:Math.random()*6.28,sw:0.4+Math.random()*0.9}); }
+  else if(mode==='sun'){ const n=Math.round(W*0.05); for(let i=0;i<n;i++) weather.parts.push({x:Math.random()*W,y:Math.random()*H,r:0.6+Math.random()*1.8,a:0.12+Math.random()*0.3,ph:Math.random()*6.28,sw:0.25+Math.random()*0.7,vy:0.15+Math.random()*0.4}); }
+}
+function weatherFrame(){ const g=weather.ctx, W=weather.w, H=weather.h; if(!g) return; g.clearRect(0,0,W,H); weather.t+=0.016;
+  if(weather.mode==='rain'){ g.lineWidth=1.1; g.lineCap='round';
+    for(const d of weather.parts){ g.strokeStyle='rgba(176,206,255,'+d.a.toFixed(3)+')'; g.beginPath(); g.moveTo(d.x,d.y); g.lineTo(d.x+d.drift*2.2,d.y+d.len); g.stroke(); d.y+=d.sp; d.x+=d.drift; if(d.y>H+24){ d.y=-20; d.x=Math.random()*W; } } }
+  else if(weather.mode==='snow'){
+    for(const f of weather.parts){ g.fillStyle='rgba(255,255,255,'+f.a.toFixed(3)+')'; g.beginPath(); g.arc(f.x+Math.sin(weather.t*f.sw+f.ph)*9, f.y, f.r, 0, 6.2832); g.fill(); f.y+=f.sp; if(f.y>H+6){ f.y=-6; f.x=Math.random()*W; } } }
+  else if(weather.mode==='sun'){ const cx=W*0.5, cy=-H*0.12;
+    g.save(); g.globalCompositeOperation='lighter';
+    for(let i=0;i<7;i++){ const a=(-0.5+i/6)*0.95 + Math.sin(weather.t*0.3+i)*0.04;
+      g.fillStyle='rgba(255,222,150,0.05)'; g.beginPath(); g.moveTo(cx,cy);
+      g.lineTo(cx+Math.sin(a-0.045)*H*1.9, cy+Math.cos(a-0.045)*H*1.9);
+      g.lineTo(cx+Math.sin(a+0.045)*H*1.9, cy+Math.cos(a+0.045)*H*1.9);
+      g.closePath(); g.fill(); }
+    for(const f of weather.parts){ g.fillStyle='rgba(255,238,185,'+f.a.toFixed(3)+')'; const yy=((f.y - weather.t*f.vy*20)%H+H)%H; g.beginPath(); g.arc(f.x+Math.sin(weather.t*f.sw+f.ph)*14, yy, f.r, 0, 6.2832); g.fill(); }
+    g.restore(); }
+  weather.raf=requestAnimationFrame(weatherFrame); }
 function setWeather(mode){ if(!weather.canvas){ weather.canvas=document.getElementById('weather'); weather.ctx=weather.canvas.getContext('2d'); resizeWeather(); window.addEventListener('resize',resizeWeather); }
   weather.mode=mode; if(weather.raf){ cancelAnimationFrame(weather.raf); weather.raf=null; }
-  if(mode==='rain'){ document.body.classList.add('raining'); const n=Math.round(window.innerWidth*0.16); weather.drops=[]; for(let i=0;i<n;i++) weather.drops.push(newDrop(true)); rainFrame(); }
-  else { document.body.classList.remove('raining'); if(weather.ctx) weather.ctx.clearRect(0,0,weather.w,weather.h); }
-  const b=document.getElementById('weatherBtn'); if(b){ b.textContent= mode==='rain'?'🌧 Rain ✓':'🌧 Rain'; b.classList.toggle('sel',mode==='rain'); } }
-function toggleWeather(){ setWeather(weather.mode==='rain'?'none':'rain'); }
+  document.body.classList.remove('raining','sunny','snowing');
+  if(mode==='none'){ if(weather.ctx) weather.ctx.clearRect(0,0,weather.w,weather.h); }
+  else { document.body.classList.add(mode==='rain'?'raining':(mode==='sun'?'sunny':'snowing')); seedParts(mode); weatherFrame(); }
+  const b=document.getElementById('weatherBtn'); if(b){ b.textContent=WEATHER_LABEL[mode]+(mode!=='none'?' ✓':''); b.classList.toggle('sel',mode!=='none'); } }
+function cycleWeather(){ const i=WEATHER_MODES.indexOf(weather.mode); setWeather(WEATHER_MODES[(i+1)%WEATHER_MODES.length]); }
 
 document.getElementById('musicBtn').addEventListener('click',toggleMusic);
-document.getElementById('weatherBtn').addEventListener('click',toggleWeather);
+document.getElementById('weatherBtn').addEventListener('click',cycleWeather);
 document.getElementById('gestureBtn').addEventListener('click',enableGestures);
 document.getElementById('helpBtn').addEventListener('click',()=>document.getElementById('guide').classList.add('show'));
 document.getElementById('guideClose').addEventListener('click',()=>document.getElementById('guide').classList.remove('show'));
