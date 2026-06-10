@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Tree of Life — Music Studio</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{min-height:100vh;background:radial-gradient(120% 120% at 50% 25%,#0a1d2a,#04060c 70%);
+    color:#eaf2ff;font-family:-apple-system,Segoe UI,Roboto,sans-serif;padding:38px 20px 60px}
+  .wrap{max-width:880px;margin:0 auto}
+  h1{font-size:24px;font-weight:600;letter-spacing:.3px}
+  .sub{opacity:.6;margin-top:8px;font-size:14px;line-height:1.6;max-width:620px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin-top:26px}
+  .card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:16px;
+    padding:18px 18px 16px;transition:.25s;cursor:pointer;position:relative;overflow:hidden}
+  .card:hover{background:rgba(255,255,255,.07);border-color:rgba(120,200,255,.35)}
+  .card.on{background:linear-gradient(160deg,rgba(80,200,255,.16),rgba(120,120,255,.10));
+    border-color:rgba(130,210,255,.7);box-shadow:0 0 26px rgba(90,180,255,.25)}
+  .name{font-size:17px;font-weight:600;display:flex;align-items:center;gap:9px}
+  .desc{opacity:.55;font-size:12.5px;margin-top:8px;line-height:1.55;min-height:34px}
+  .row{display:flex;align-items:center;justify-content:space-between;margin-top:14px}
+  .btn{border:0;border-radius:999px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;
+    background:rgba(255,255,255,.12);color:#eaf2ff;transition:.2s}
+  .card.on .btn{background:linear-gradient(90deg,#67e8ff,#9fb0ff);color:#04121c}
+  .btn:hover{filter:brightness(1.12)}
+  .bars{display:flex;gap:3px;align-items:flex-end;height:18px;opacity:0;transition:.2s}
+  .card.on .bars{opacity:1}
+  .bars span{width:3px;background:#8fe3ff;border-radius:2px;animation:eq 1s infinite ease-in-out}
+  .bars span:nth-child(2){animation-delay:.2s}.bars span:nth-child(3){animation-delay:.4s}
+  .bars span:nth-child(4){animation-delay:.1s}.bars span:nth-child(5){animation-delay:.3s}
+  @keyframes eq{0%,100%{height:4px}50%{height:18px}}
+  .foot{margin-top:30px;padding:16px 18px;background:rgba(120,200,255,.07);border:1px solid rgba(120,200,255,.2);
+    border-radius:14px;font-size:13.5px;line-height:1.65;opacity:.92}
+  .foot b{color:#9fe3ff}
+  .vol{display:flex;align-items:center;gap:10px;margin-top:18px;font-size:13px;opacity:.7}
+  input[type=range]{accent-color:#67e8ff}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎵 Music Studio</h1>
+  <div class="sub">Eight different background-music styles for your Tree of Life. Tap a card to listen — each one plays a gentle, endless, generative loop (it improvises, so it never exactly repeats). Only one plays at a time. When you've found ones you love, tell me their names.</div>
+
+  <div class="vol">🔊 Volume <input id="vol" type="range" min="-30" max="0" value="-9" step="1"></div>
+  <div class="grid" id="grid"></div>
+
+  <div class="foot">When you're done auditioning, just message me the <b>name(s)</b> you like (e.g. "Felt Piano and Kalimba") and I'll wire them into the app as the new music. You can pick one, a few, or mix-and-match per theme.</div>
+</div>
+
+<script>
+const M = m => Tone.Frequency(m,'midi').toFrequency();
+const pick = a => a[Math.floor(Math.random()*a.length)];
+let master, comp;
+function masterChain(){
+  if(master) return master;
+  comp = new Tone.Compressor(-18,3).toDestination();
+  master = new Tone.Gain(1).connect(comp);
+  return master;
+}
+
+// Each style: build(nodes) creates synths + schedules Loops on Transport. Push everything into nodes.
+const STYLES = [
+  { id:'pads', name:'Aurora Pads', emoji:'🌌', bpm:54,
+    desc:'Lush, slow-evolving warm chords. Spacious and dreamy — close to now, but softer.',
+    build(n){ const rev=new Tone.Reverb({decay:13,wet:.62}).connect(masterChain());
+      const pad=new Tone.PolySynth(Tone.Synth).connect(rev);
+      pad.set({oscillator:{type:'sine'},envelope:{attack:1.4,decay:.6,sustain:.75,release:6}}); pad.volume.value=-15;
+      const ch=[[0,4,7,11],[-3,2,5,9],[-5,0,4,7],[2,5,9,12]]; let i=0;
+      const lp=new Tone.Loop(t=>{ pad.triggerAttackRelease(ch[i%ch.length].map(d=>M(60+d)),'1m',t,.45); i++; },'2m').start(0);
+      n.push(rev,pad,lp); } },
+
+  { id:'box', name:'Music Box', emoji:'🎁', bpm:72,
+    desc:'Delicate wind-up music-box melody. Nostalgic, tender, lullaby-like.',
+    build(n){ const rev=new Tone.Reverb({decay:6,wet:.5}).connect(masterChain());
+      const mb=new Tone.PolySynth(Tone.Synth).connect(rev);
+      mb.set({oscillator:{type:'triangle'},envelope:{attack:.001,decay:1.3,sustain:0,release:1.3}}); mb.volume.value=-9;
+      const sc=[0,2,4,7,9,12,14,16]; const root=72;
+      const lp=new Tone.Loop(t=>{ if(Math.random()<.88){ const notes=[M(root+pick(sc))]; if(Math.random()<.25) notes.push(M(root+pick(sc)+ (Math.random()<.5?-12:7)));
+        mb.triggerAttackRelease(notes,'8n',t,.55+Math.random()*.3);} },'4n').start(0);
+      n.push(rev,mb,lp); } },
+
+  { id:'felt', name:'Felt Piano', emoji:'🎹', bpm:60,
+    desc:'Soft, intimate solo piano. Sparse single notes and quiet chords. Minimal and emotional.',
+    build(n){ const rev=new Tone.Reverb({decay:8,wet:.42}).connect(masterChain());
+      const p=new Tone.PolySynth(Tone.Synth).connect(rev);
+      p.set({oscillator:{type:'sine'},envelope:{attack:.006,decay:1.9,sustain:.12,release:2.6}}); p.volume.value=-11;
+      const sc=[0,3,5,7,10,12]; const root=52;
+      const lp=new Tone.Loop(t=>{ const r=Math.random();
+        if(r<.45){ p.triggerAttackRelease(M(root+pick(sc)),'2n',t,.5); }
+        else if(r<.7){ const b=pick([0,5,7]); p.triggerAttackRelease([M(root+b),M(root+b+4),M(root+b+7)],'1m',t,.4); }
+      },'2n').start(0);
+      n.push(rev,p,lp); } },
+
+  { id:'kalimba', name:'Kalimba', emoji:'🪕', bpm:94,
+    desc:'Bright plucked thumb-piano. Hopeful, bouncy, full of little cascading patterns.',
+    build(n){ const rev=new Tone.Reverb({decay:4,wet:.34}).connect(masterChain());
+      const pk=new Tone.PluckSynth({attackNoise:1.2,dampening:3600,resonance:.92}).connect(rev); pk.volume.value=-4;
+      const sc=[0,2,4,7,9,12,14]; const root=60; let step=0; const order=[0,2,4,3,5,4,2,1];
+      const lp=new Tone.Loop(t=>{ const idx=order[step%order.length]; if(Math.random()<.92) pk.triggerAttackRelease(M(root+sc[idx%sc.length]),'8n',t); step++; },'8n').start(0);
+      n.push(rev,pk,lp); } },
+
+  { id:'crystal', name:'Crystal Bells', emoji:'❄️', bpm:50,
+    desc:'Shimmering high glassy bells with long tails. Ethereal, starlit, floaty.',
+    build(n){ const rev=new Tone.Reverb({decay:11,wet:.66}).connect(masterChain());
+      const fm=new Tone.FMSynth({harmonicity:3.01,modulationIndex:12,
+        envelope:{attack:.002,decay:2.4,sustain:0,release:2.4},
+        modulationEnvelope:{attack:.002,decay:.25,sustain:0,release:.2}}).connect(rev); fm.volume.value=-13;
+      const sc=[0,2,5,7,9,12,14]; const root=76;
+      const lp=new Tone.Loop(t=>{ if(Math.random()<.6) fm.triggerAttackRelease(M(root+pick(sc)+ (Math.random()<.3?12:0)),'2n',t,.5+Math.random()*.3); },'2n').start(0);
+      n.push(rev,fm,lp); } },
+
+  { id:'strings', name:'Warm Strings', emoji:'🎻', bpm:48,
+    desc:'Slow cinematic string swells. Rich and heartfelt — good for emotional, romantic gifts.',
+    build(n){ const rev=new Tone.Reverb({decay:9,wet:.55}).connect(masterChain());
+      const filt=new Tone.Filter(1100,'lowpass').connect(rev);
+      const st=new Tone.PolySynth(Tone.Synth).connect(filt);
+      st.set({oscillator:{type:'sawtooth'},envelope:{attack:1.8,decay:.4,sustain:.85,release:3.5}}); st.volume.value=-24;
+      const ch=[[0,3,7],[-2,3,5],[-4,0,3],[-5,-1,2]]; let i=0;
+      const lp=new Tone.Loop(t=>{ st.triggerAttackRelease(ch[i%ch.length].map(d=>M(52+d)),'1m',t,.5); i++; },'1m').start(0);
+      n.push(rev,filt,st,lp); } },
+
+  { id:'harp', name:'Harp', emoji:'🪽', bpm:84,
+    desc:'Flowing harp arpeggios that ripple up and down. Graceful and romantic.',
+    build(n){ const rev=new Tone.Reverb({decay:6,wet:.5}).connect(masterChain());
+      const h=new Tone.PolySynth(Tone.Synth).connect(rev);
+      h.set({oscillator:{type:'triangle'},envelope:{attack:.005,decay:1.5,sustain:0,release:1.6}}); h.volume.value=-12;
+      const sc=[0,2,4,7,9,12,16,19]; const root=50; let s=0; let dir=1;
+      const lp=new Tone.Loop(t=>{ h.triggerAttackRelease(M(root+sc[s]),'8n',t,.5); s+=dir; if(s>=sc.length-1){dir=-1;} if(s<=0){dir=1;} },'16n').start(0);
+      n.push(rev,h,lp); } },
+
+  { id:'lofi', name:'Lo-fi Dreams', emoji:'☕', bpm:68,
+    desc:'Mellow, slightly-detuned dreamy keys with soft 7th chords. Cozy, chill, relaxed.',
+    build(n){ const rev=new Tone.Reverb({decay:6,wet:.45}).connect(masterChain());
+      const cho=new Tone.Chorus(2,2.5,.5).start().connect(rev);
+      const k=new Tone.PolySynth(Tone.Synth).connect(cho);
+      k.set({oscillator:{type:'sine'},detune:7,envelope:{attack:.03,decay:.5,sustain:.55,release:1.8}}); k.volume.value=-14;
+      const ch=[[0,4,7,11],[-3,0,4,9],[-5,-1,2,7],[-7,-3,0,5]]; let i=0;
+      const lp=new Tone.Loop(t=>{ k.triggerAttackRelease(ch[i%ch.length].map(d=>M(60+d)),'2n',t,.4);
+        if(Math.random()<.4) k.triggerAttackRelease(M(72+pick([0,2,4,7,9])),'8n',t+ Tone.Time('4n').toSeconds(),.25); i++; },'1m').start(0);
+      n.push(rev,cho,k,lp); } },
+];
+
+let active=null;
+function stopAll(){
+  Tone.Transport.stop(); Tone.Transport.cancel(0);
+  document.querySelectorAll('.card').forEach(c=>{ c.classList.remove('on'); c.querySelector('.btn').textContent='▶ Play'; });
+  if(active){ active.nodes.forEach(x=>{ try{x.dispose();}catch(e){} }); active=null; }
+}
+async function toggle(style, cardEl){
+  await Tone.start();
+  const wasOn = active && active.id===style.id;
+  stopAll();
+  if(wasOn) return;
+  const nodes=[];
+  Tone.Transport.bpm.value = style.bpm;
+  style.build(nodes);
+  active={ id:style.id, nodes };
+  Tone.Transport.start('+0.05');
+  cardEl.classList.add('on');
+  cardEl.querySelector('.btn').textContent='⏸ Stop';
+}
+
+const grid=document.getElementById('grid');
+STYLES.forEach(s=>{
+  const card=document.createElement('div'); card.className='card';
+  card.innerHTML=`<div class="name">${s.emoji} ${s.name}</div>
+    <div class="desc">${s.desc}</div>
+    <div class="row"><button class="btn">▶ Play</button>
+      <div class="bars"><span></span><span></span><span></span><span></span><span></span></div></div>`;
+  card.addEventListener('click',()=>toggle(s,card));
+  grid.appendChild(card);
+});
+
+document.getElementById('vol').addEventListener('input',e=>{ if(master) master.gain.rampTo(Tone.dbToGain(+e.target.value),.1); else masterChain().gain.value=Tone.dbToGain(+e.target.value); });
+masterChain().gain.value = Tone.dbToGain(-9);
+</script>
+</body>
+</html>
