@@ -91,6 +91,7 @@
 
 <!-- floating tools -->
 <div id="tools">
+  <button class="pill" id="langBtn">中文</button>
   <button class="pill" id="musicBtn">♪ Music</button>
   <button class="pill" id="weatherBtn">🌦 Weather</button>
   <button class="pill" id="gestureBtn">✋ Gestures</button>
@@ -487,7 +488,7 @@ let music, startMusic, toggleMusic, setTrack;
   music={ track:'lofibeat', nodes:[], started:false };
   function buildTrack(id){ const t=TRACKS[id]||TRACKS.lofibeat; Tone.Transport.bpm.value=t.bpm; Tone.Transport.swing=t.swing||0; Tone.Transport.swingSubdivision='8n'; const nodes=[]; t.build(nodes); music.nodes=nodes; }
   function clearTrack(){ Tone.Transport.cancel(0); music.nodes.forEach(x=>{ try{x.dispose();}catch(e){} }); music.nodes=[]; }
-  function updateMusicBtn(){ const b=document.getElementById('musicBtn'); if(b){ b.textContent=music.started?'♪ Music ✓':'♪ Music'; b.classList.toggle('sel',music.started); } }
+  function updateMusicBtn(){ const b=document.getElementById('musicBtn'); if(b){ b.textContent=(typeof t==='function'?t('music'):'♪ Music')+(music.started?' ✓':''); b.classList.toggle('sel',music.started); } }
   startMusic=async function(){ try{ await Tone.start(); }catch(e){} Tone.Transport.stop(); clearTrack(); buildTrack(music.track); Tone.Transport.start('+0.05'); music.started=true; updateMusicBtn(); };
   function stopMusic(){ Tone.Transport.stop(); clearTrack(); music.started=false; updateMusicBtn(); }
   toggleMusic=function(){ music.started?stopMusic():startMusic(); };
@@ -533,7 +534,7 @@ function disableGestures(){
   gesturesOn=false;
   try{ if(mpCamera) mpCamera.stop(); }catch(e){}
   document.getElementById('cam').style.display='none';
-  const b=document.getElementById('gestureBtn'); b.classList.remove('sel'); b.textContent='✋ Gestures';
+  const b=document.getElementById('gestureBtn'); b.classList.remove('sel'); b.textContent=(typeof t==='function'?t('gestures'):'✋ Gestures');
   state.steering=false; state.morphTarget=0; state.anyFist=false; state.holding=false; state.focusIndex=-1; state.waveX=null;
 }
 async function enableGestures(){
@@ -543,7 +544,7 @@ async function enableGestures(){
     hands.setOptions({maxNumHands:2,modelComplexity:0,minDetectionConfidence:0.6,minTrackingConfidence:0.6});
     hands.onResults(onResults);
     mpCamera=new Camera(document.getElementById('cam'),{onFrame:async()=>{await hands.send({image:document.getElementById('cam')});},width:640,height:480});
-    await mpCamera.start(); gesturesOn=true; document.getElementById('gestureBtn').classList.add('sel'); document.getElementById('gestureBtn').textContent='✋ Gestures ✓';
+    await mpCamera.start(); gesturesOn=true; document.getElementById('gestureBtn').classList.add('sel'); document.getElementById('gestureBtn').textContent=(typeof t==='function'?t('gestures'):'✋ Gestures')+' ✓';
     document.getElementById('guide').classList.add('show');
   }catch(e){ toast('Camera blocked — gestures need camera access.'); document.getElementById('cam').style.display='none'; }
 }
@@ -600,7 +601,7 @@ function compressImage(file, maxEdge, quality){ return new Promise((resolve,reje
 const builderItems=[null,null,null,null,null]; // {url,title,file}
 function buildSlots(){ const wrap=document.getElementById('slots'); wrap.innerHTML='';
   for(let i=0;i<5;i++){ const row=document.createElement('div'); row.className='slot';
-    row.innerHTML=`<label class="thumb"><span>＋</span><input type="file" accept="image/*" style="display:none"></label><input type="text" placeholder="Caption ${i+1} (optional)">`;
+    row.innerHTML=`<label class="thumb"><span>＋</span><input type="file" accept="image/*" style="display:none"></label><input type="text" placeholder="${t('caption').replace('{n}',i+1)}">`;
     const fileInput=row.querySelector('input[type=file]'), thumb=row.querySelector('.thumb'), cap=row.querySelector('input[type=text]');
     fileInput.addEventListener('change',async e=>{ const f=e.target.files[0]; if(!f)return;
       if(!/^image\//.test(f.type)){ toast('Please choose an image file.'); e.target.value=''; return; }
@@ -644,13 +645,13 @@ async function purgeExpired(){
 function encodeCard(card){ return encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(card))))); }
 function showGiftResult(link){
   const res=document.getElementById('result'); res.style.display='block';
-  res.innerHTML=`<b>Your gift is ready 🎁</b><div class="linkbox"><input id="shareLink" readonly value="${link}"><button class="pill" id="copyLink">Copy</button></div><div style="margin-top:8px"><a href="${link}" target="_blank">Open preview ↗</a></div><div style="margin-top:6px;opacity:.6;font-size:12px">This tree stays alive for 48 hours, then gently fades away. 🥀</div>`;
-  document.getElementById('copyLink').addEventListener('click',()=>{ const inp=document.getElementById('shareLink'); inp.select(); navigator.clipboard?.writeText(inp.value); toast('Link copied!'); });
+  res.innerHTML=`<b>${t('giftReady')}</b><div class="linkbox"><input id="shareLink" readonly value="${link}"><button class="pill" id="copyLink">${t('copy')}</button></div><div style="margin-top:8px"><a href="${link}" target="_blank">${t('openPreview')}</a></div><div style="margin-top:6px;opacity:.6;font-size:12px">${t('linkNote')}</div>`;
+  document.getElementById('copyLink').addEventListener('click',()=>{ const inp=document.getElementById('shareLink'); inp.select(); navigator.clipboard?.writeText(inp.value); toast(t('linkCopied')); });
 }
 async function createGift(){
   const items=builderItems.filter(Boolean);
   const hasUploads=items.some(it=>it.file);
-  const btn=document.getElementById('createBtn'); btn.disabled=true; btn.textContent='Creating…';
+  const btn=document.getElementById('createBtn'); btn.disabled=true; btn.textContent=t('creating');
   try{
     const meta={ style:currentStyle, music:music.track,
       to_name:document.getElementById('toName').value||'',
@@ -664,10 +665,10 @@ async function createGift(){
       const card={...meta, items:outItems, t:Date.now()};
       const link=`${location.origin}${location.pathname}?d=${encodeCard(card)}`;
       showGiftResult(link);
-      btn.disabled=false; btn.textContent='Create gift link'; return;
+      btn.disabled=false; btn.textContent=t('createBtn'); return;
     }
     // Uploaded photos need file storage
-    if(!sb){ toast('Uploaded photos need the backend connected. Tip: the default photos make an instant link with no setup.'); btn.disabled=false; btn.textContent='Create gift link'; return; }
+    if(!sb){ toast('Uploaded photos need the backend connected. Tip: the default photos make an instant link with no setup.'); btn.disabled=false; btn.textContent=t('createBtn'); return; }
     const outItems=[];
     const folder=(crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random())).replace(/[^a-z0-9]/gi,'');
     for(let i=0;i<items.length;i++){ const f=items[i].file; const ext=(f.type&&f.type.includes('png'))?'png':'jpg';
@@ -682,7 +683,7 @@ async function createGift(){
     if(ins.error) throw ins.error;
     showGiftResult(`${location.origin}${location.pathname}?c=${ins.data.id}`);
   }catch(e){ console.error(e); toast('Could not create the gift: '+(e.message||e)); }
-  btn.disabled=false; btn.textContent='Create gift link';
+  btn.disabled=false; btn.textContent=t('createBtn');
 }
 
 /* ===================== GIFT VIEWER ===================== */
@@ -693,15 +694,15 @@ async function initGift(){
   let card=null;
   if(CARD_DATA){
     try{ card=JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(CARD_DATA))))); }
-    catch(e){ document.getElementById('loading').textContent='Sorry — this gift link looks broken.'; return; }
+    catch(e){ document.getElementById('loading').textContent=t('errBroken'); return; }
   } else {
-    if(!sb){ document.getElementById('loading').textContent='This gift link needs the site backend to be connected.'; return; }
+    if(!sb){ document.getElementById('loading').textContent=t('errBackend'); return; }
     try{ const q=await sb.from('cards').select('*').eq('id',CARD_ID).single(); if(q.error) throw q.error; card=q.data; }
-    catch(e){ document.getElementById('loading').textContent='Sorry — this gift could not be found.'; return; }
+    catch(e){ document.getElementById('loading').textContent=t('errNotFound'); return; }
   }
   const createdMs = card.t ? card.t : (card.created_at ? new Date(card.created_at).getTime() : null);
   if(createdMs && (Date.now()-createdMs) > EXPIRY_MS){
-    document.getElementById('loading').innerHTML='<div style="text-align:center;line-height:1.8">This tree has faded away 🥀<br><span style="opacity:.55;font-size:13px">Gifts last 48 hours</span></div>';
+    document.getElementById('loading').innerHTML='<div style="text-align:center;line-height:1.8">'+t('expired')+'<br><span style="opacity:.55;font-size:13px">'+t('expiredSub')+'</span></div>';
     if(sb) purgeExpired();
     return;
   }
@@ -709,7 +710,7 @@ async function initGift(){
   applyStyle(card.style||'aurora'); music.track=card.music||'lofibeat'; setImages(card.items||[]);
   // envelope
   const env=document.getElementById('envelope'); env.style.display='flex';
-  document.getElementById('envFor').textContent=card.to_name?('For '+card.to_name):'';
+  document.getElementById('envFor').textContent=card.to_name?(t('forName')+card.to_name):'';
   document.getElementById('envMsg').textContent=card.message||'';
   document.getElementById('envFrom').textContent=card.from_name?('— '+card.from_name):'';
   document.getElementById('openBtn').addEventListener('click',()=>{ env.style.display='none'; document.getElementById('title').style.display=''; startMusic(); toast('Tip: tap ✋ Gestures, then ？ Guide to learn the hand controls.'); });
@@ -754,7 +755,7 @@ function setWeather(mode){ if(!weather.canvas){ weather.canvas=document.getEleme
   document.body.classList.remove('raining','sunny','snowing');
   if(mode==='none'){ if(weather.ctx) weather.ctx.clearRect(0,0,weather.w,weather.h); }
   else { document.body.classList.add(mode==='rain'?'raining':(mode==='sun'?'sunny':'snowing')); seedParts(mode); weatherFrame(); }
-  const b=document.getElementById('weatherBtn'); if(b){ b.textContent=WEATHER_LABEL[mode]+(mode!=='none'?' ✓':''); b.classList.toggle('sel',mode!=='none'); } }
+  const b=document.getElementById('weatherBtn'); if(b){ b.textContent=(typeof t==='function'?t('w_'+mode):WEATHER_LABEL[mode])+(mode!=='none'?' ✓':''); b.classList.toggle('sel',mode!=='none'); } }
 function cycleWeather(){ const i=WEATHER_MODES.indexOf(weather.mode); setWeather(WEATHER_MODES[(i+1)%WEATHER_MODES.length]); }
 
 document.getElementById('musicBtn').addEventListener('click',toggleMusic);
@@ -763,9 +764,68 @@ document.getElementById('gestureBtn').addEventListener('click',enableGestures);
 document.getElementById('helpBtn').addEventListener('click',()=>document.getElementById('guide').classList.add('show'));
 document.getElementById('guideClose').addEventListener('click',()=>document.getElementById('guide').classList.remove('show'));
 
+/* ---- i18n (English / 中文) ---- */
+const I18N={
+  en:{ title:'TREE OF LIFE', subtitle:'a gift of memories', makeTree:'Make a memory tree',
+    builderSub:'Choose a style, add up to 5 photos with little captions, write a message, pick a mood — then create a link to send as a gift.',
+    h_style:'Tree style', h_photos:'Photos & captions', h_message:'Your message', h_music:'Music',
+    createBtn:'Create gift link', creating:'Creating…', edit:'✎ Edit',
+    s_aurora:'Aurora', s_sakura:'Sakura', s_golden:'Golden', s_christmas:'Christmas', s_romance:'Romance ♥', s_galaxy:'Galaxy ✦',
+    toPh:'To… (e.g. Mom)', fromPh:'From… (e.g. Frank)', msgPh:'Write something from the heart…', caption:'Caption {n} (optional)',
+    m_lofibeat:'Lo-fi Beat 🎧', m_lovelofi:'Lovers 💗', m_friendlofi:'Friends 🤝', m_familylofi:'Family 🏡', m_lofi:'Lo-fi Dreams ☕', m_pads:'Aurora 🌌', m_box:'Music Box 🎁', m_strings:'Strings 🎻', m_harp:'Harp 🪽', m_synth:'Dream Synth 🌈', m_bossa:'Bossa 🍹', m_celesta:'Celesta ✨',
+    music:'♪ Music', gestures:'✋ Gestures', guide:'？ Guide', w_none:'🌦 Weather', w_rain:'🌧 Rain', w_sun:'☀️ Sun', w_snow:'❄️ Snow',
+    giftReady:'Your gift is ready 🎁', copy:'Copy', openPreview:'Open preview ↗', linkNote:'This tree stays alive for 48 hours, then gently fades away. 🥀', linkCopied:'Link copied!',
+    giftTitle:'A gift for you', openGift:'Open your gift', forName:'For ', loading:'opening…',
+    expired:'This tree has faded away 🥀', expiredSub:'Gifts last 48 hours',
+    errBroken:'Sorry — this gift link looks broken.', errBackend:'This gift link needs the site backend to be connected.', errNotFound:'Sorry — this gift could not be found.',
+    guideTitle:'Hand gestures', g_pinch:'<b>Pinch</b> — grab the nearest photo and hold it up close.', g_swipe:'<b>Swipe your other hand</b> left / right to flip to another photo (keep pinching).', g_fist:'<b>Fist</b> — spin the tree fast.', g_open:'<b>Open hand</b> — bloom the tree outward.', g_two:'<b>Two hands</b> — tilt & steer the tree.', gotIt:'Got it' },
+  zh:{ title:'生命之树', subtitle:'记忆的礼物', makeTree:'制作回忆之树',
+    builderSub:'选择风格，添加最多 5 张照片和小标题，写下寄语，挑选音乐——然后生成链接作为礼物送出。',
+    h_style:'树的风格', h_photos:'照片与标题', h_message:'你的寄语', h_music:'音乐',
+    createBtn:'生成礼物链接', creating:'生成中…', edit:'✎ 编辑',
+    s_aurora:'极光', s_sakura:'樱花', s_golden:'金色', s_christmas:'圣诞', s_romance:'浪漫 ♥', s_galaxy:'银河 ✦',
+    toPh:'给… (例如 妈妈)', fromPh:'来自… (例如 Frank)', msgPh:'写下你的心里话…', caption:'标题 {n}（可选）',
+    m_lofibeat:'Lo-fi 节拍 🎧', m_lovelofi:'恋人 💗', m_friendlofi:'朋友 🤝', m_familylofi:'家人 🏡', m_lofi:'Lo-fi 梦境 ☕', m_pads:'极光 🌌', m_box:'八音盒 🎁', m_strings:'弦乐 🎻', m_harp:'竖琴 🪽', m_synth:'梦幻合成 🌈', m_bossa:'巴萨 🍹', m_celesta:'钢片琴 ✨',
+    music:'♪ 音乐', gestures:'✋ 手势', guide:'？ 指南', w_none:'🌦 天气', w_rain:'🌧 下雨', w_sun:'☀️ 阳光', w_snow:'❄️ 下雪',
+    giftReady:'你的礼物已就绪 🎁', copy:'复制', openPreview:'打开预览 ↗', linkNote:'这棵树会存在 48 小时，然后轻轻消逝。🥀', linkCopied:'链接已复制！',
+    giftTitle:'给你的礼物', openGift:'打开你的礼物', forName:'致 ', loading:'正在打开…',
+    expired:'这棵树已经消逝 🥀', expiredSub:'礼物保留 48 小时',
+    errBroken:'抱歉——这个礼物链接似乎已损坏。', errBackend:'这个礼物链接需要连接网站后端。', errNotFound:'抱歉——找不到这个礼物。',
+    guideTitle:'手势', g_pinch:'<b>捏合</b> —— 抓住最近的照片并拉近查看。', g_swipe:'<b>另一只手左右挥动</b> 切换到另一张照片（保持捏合）。', g_fist:'<b>握拳</b> —— 让树快速旋转。', g_open:'<b>张开手掌</b> —— 让树向外绽放。', g_two:'<b>双手</b> —— 倾斜并操控这棵树。', gotIt:'知道了' }
+};
+let LANG='en'; try{ LANG=localStorage.getItem('tol_lang')||'en'; }catch(e){}
+function t(k){ const d=I18N[LANG]||I18N.en; return (d[k]!=null?d[k]:(I18N.en[k]!=null?I18N.en[k]:k)); }
+function setLang(l){
+  LANG=l; try{ localStorage.setItem('tol_lang',l); }catch(e){}
+  document.documentElement.lang=(l==='zh'?'zh-Hans':'en');
+  const byId=(id,k)=>{ const e=document.getElementById(id); if(e) e.textContent=t(k); };
+  const q=(sel,k)=>{ const e=document.querySelector(sel); if(e) e.textContent=t(k); };
+  q('#title h1','title'); q('#title p','subtitle');
+  q('#builder h2','makeTree'); q('#builder .sub','builderSub');
+  const h3=document.querySelectorAll('#builder h3'); const hk=['h_style','h_photos','h_message','h_music']; h3.forEach((e,i)=>{ if(hk[i]) e.textContent=t(hk[i]); });
+  byId('createBtn','createBtn'); byId('builderToggle','edit');
+  document.querySelectorAll('#styleRow .pill').forEach(b=>{ b.textContent=t('s_'+b.dataset.style); });
+  document.querySelectorAll('#moodRow .pill').forEach(b=>{ b.textContent=t('m_'+b.dataset.track); });
+  const tn=document.getElementById('toName'); if(tn) tn.placeholder=t('toPh');
+  const fn=document.getElementById('fromName'); if(fn) fn.placeholder=t('fromPh');
+  const mg=document.getElementById('message'); if(mg) mg.placeholder=t('msgPh');
+  document.querySelectorAll('#slots input[type=text]').forEach((inp,i)=>{ inp.placeholder=t('caption').replace('{n}',i+1); });
+  byId('envTitle','giftTitle'); byId('openBtn','openGift');
+  q('#guide h3','guideTitle'); byId('guideClose','gotIt');
+  const gr=document.querySelectorAll('#guide .grow > div:last-child'); const gk=['g_pinch','g_swipe','g_fist','g_open','g_two']; gr.forEach((e,i)=>{ if(gk[i]) e.innerHTML=t(gk[i]); });
+  const ms=(typeof music!=='undefined'&&music.started); const mb=document.getElementById('musicBtn'); if(mb) mb.textContent=t('music')+(ms?' ✓':'');
+  const wm=(typeof weather!=='undefined')?weather.mode:'none'; const wb=document.getElementById('weatherBtn'); if(wb) wb.textContent=t('w_'+wm)+(wm!=='none'?' ✓':'');
+  const go=(typeof gesturesOn!=='undefined'&&gesturesOn); const gb=document.getElementById('gestureBtn'); if(gb) gb.textContent=t('gestures')+(go?' ✓':'');
+  byId('helpBtn','guide');
+  const lb=document.getElementById('langBtn'); if(lb) lb.textContent=(l==='zh'?'EN':'中文');
+}
+function toggleLang(){ setLang(LANG==='zh'?'en':'zh'); }
+
 /* ---- boot ---- */
 if(MODE==='gift'){ initGift(); } else { initBuilder(); }
 if(sb) purgeExpired(); // opportunistically clean out trees older than 48h
+document.getElementById('langBtn').addEventListener('click',toggleLang);
+setLang(LANG);
 </script>
 </body>
 </html>
