@@ -41,7 +41,7 @@
 <body>
 <div class="wrap">
   <h1>🎵 Music Studio</h1>
-  <div class="sub">Thirteen background-music styles for your Tree of Life — including a real lo-fi beat. Tap a card to listen — each one plays a gentle, endless, generative loop (it improvises, so it never exactly repeats). Only one plays at a time. When you've found ones you love, tell me their names.</div>
+  <div class="sub">Twelve background-music styles for your Tree of Life — including lo-fi beats for lovers, friends and family. Tap a card to listen — each one plays a gentle, endless, generative loop (it improvises, so it never exactly repeats). Only one plays at a time. When you've found ones you love, tell me their names.</div>
 
   <div class="vol">🔊 Volume <input id="vol" type="range" min="-30" max="0" value="-9" step="1"></div>
   <div class="grid" id="grid"></div>
@@ -80,36 +80,6 @@ const STYLES = [
       const lp=new Tone.Loop(t=>{ if(Math.random()<.88){ const notes=[M(root+pick(sc))]; if(Math.random()<.25) notes.push(M(root+pick(sc)+ (Math.random()<.5?-12:7)));
         mb.triggerAttackRelease(notes,'8n',t,.55+Math.random()*.3);} },'4n').start(0);
       n.push(rev,mb,lp); } },
-
-  { id:'felt', name:'Felt Piano', emoji:'🎹', bpm:60,
-    desc:'Soft, intimate solo piano. Sparse single notes and quiet chords. Minimal and emotional.',
-    build(n){ const rev=new Tone.Reverb({decay:8,wet:.42}).connect(masterChain());
-      const p=new Tone.PolySynth(Tone.Synth).connect(rev);
-      p.set({oscillator:{type:'sine'},envelope:{attack:.006,decay:1.9,sustain:.12,release:2.6}}); p.volume.value=-11;
-      const sc=[0,3,5,7,10,12]; const root=52;
-      const lp=new Tone.Loop(t=>{ const r=Math.random();
-        if(r<.45){ p.triggerAttackRelease(M(root+pick(sc)),'2n',t,.5); }
-        else if(r<.7){ const b=pick([0,5,7]); p.triggerAttackRelease([M(root+b),M(root+b+4),M(root+b+7)],'1m',t,.4); }
-      },'2n').start(0);
-      n.push(rev,p,lp); } },
-
-  { id:'kalimba', name:'Kalimba', emoji:'🪕', bpm:94,
-    desc:'Bright plucked thumb-piano. Hopeful, bouncy, full of little cascading patterns.',
-    build(n){ const rev=new Tone.Reverb({decay:4,wet:.34}).connect(masterChain());
-      const pk=new Tone.PluckSynth({attackNoise:1.2,dampening:3600,resonance:.92}).connect(rev); pk.volume.value=-4;
-      const sc=[0,2,4,7,9,12,14]; const root=60; let step=0; const order=[0,2,4,3,5,4,2,1];
-      const lp=new Tone.Loop(t=>{ const idx=order[step%order.length]; if(Math.random()<.92) pk.triggerAttackRelease(M(root+sc[idx%sc.length]),'8n',t); step++; },'8n').start(0);
-      n.push(rev,pk,lp); } },
-
-  { id:'crystal', name:'Crystal Bells', emoji:'❄️', bpm:50,
-    desc:'Shimmering high glassy bells with long tails. Ethereal, starlit, floaty.',
-    build(n){ const rev=new Tone.Reverb({decay:11,wet:.66}).connect(masterChain());
-      const fm=new Tone.FMSynth({harmonicity:3.01,modulationIndex:12,
-        envelope:{attack:.002,decay:2.4,sustain:0,release:2.4},
-        modulationEnvelope:{attack:.002,decay:.25,sustain:0,release:.2}}).connect(rev); fm.volume.value=-13;
-      const sc=[0,2,5,7,9,12,14]; const root=76;
-      const lp=new Tone.Loop(t=>{ if(Math.random()<.6) fm.triggerAttackRelease(M(root+pick(sc)+ (Math.random()<.3?12:0)),'2n',t,.5+Math.random()*.3); },'2n').start(0);
-      n.push(rev,fm,lp); } },
 
   { id:'strings', name:'Warm Strings', emoji:'🎻', bpm:48,
     desc:'Slow cinematic string swells. Rich and heartfelt — good for emotional, romantic gifts.',
@@ -156,14 +126,57 @@ const STYLES = [
       const seq=new Tone.Sequence((t,s)=>{ hat.triggerAttackRelease('16n',t,(s%2?0.5:0.85)); if(s===0||s===4) kick.triggerAttackRelease('C1','8n',t,.9); if(s===2||s===6) snare.triggerAttackRelease('8n',t,.7); },[0,1,2,3,4,5,6,7],'8n').start(0);
       n.push(rev,keys,bass,kick,snare,hat,crackle,cf,cl,seq); } },
 
-  { id:'marimba', name:'Marimba', emoji:'🌴', bpm:96,
-    desc:'Warm wooden mallets dancing in playful patterns. Sunny, upbeat and joyful.',
-    build(n){ const rev=new Tone.Reverb({decay:3,wet:.3}).connect(masterChain());
-      const m=new Tone.PolySynth(Tone.FMSynth).connect(rev);
-      m.set({harmonicity:4,modulationIndex:2,envelope:{attack:.001,decay:.5,sustain:0,release:.5},modulationEnvelope:{attack:.001,decay:.2,sustain:0,release:.2}}); m.volume.value=-12;
-      const sc=[0,2,4,7,9,12,14,16]; const root=60; let s=0; const order=[0,2,4,2,5,4,7,5,4,2];
-      const lp=new Tone.Loop(t=>{ const idx=order[s%order.length]; m.triggerAttackRelease(M(root+sc[idx%sc.length]),'8n',t,.6); if(Math.random()<.3) m.triggerAttackRelease(M(root+sc[(idx+2)%sc.length]+12),'16n',t+Tone.Time('16n').toSeconds(),.4); s++; },'8n').start(0);
-      n.push(rev,m,lp); } },
+  { id:'lovelofi', name:'Lovers — Lo-fi', emoji:'💗', bpm:72, swing:0.2,
+    desc:'A warm romantic lo-fi groove — soft Rhodes, a mellow beat and a tender melody floating on top. Intimate and dreamy, made for lovers.',
+    build(n){ const rev=new Tone.Reverb({decay:4,wet:.3}).connect(masterChain());
+      const keys=new Tone.PolySynth(Tone.FMSynth).connect(rev);
+      keys.set({harmonicity:2,modulationIndex:2.5,envelope:{attack:.02,decay:.8,sustain:.2,release:1.4},modulationEnvelope:{attack:.02,decay:.4,sustain:0,release:.4}}); keys.volume.value=-15;
+      const lead=new Tone.Synth({oscillator:{type:'sine'},envelope:{attack:.04,decay:.4,sustain:.2,release:1.2}}).connect(rev); lead.volume.value=-17;
+      const bass=new Tone.MonoSynth({oscillator:{type:'sine'},envelope:{attack:.02,decay:.3,sustain:.5,release:.5},filterEnvelope:{baseFrequency:140,octaves:2}}).connect(masterChain()); bass.volume.value=-13;
+      const kick=new Tone.MembraneSynth({octaves:5,pitchDecay:.05}).connect(masterChain()); kick.volume.value=-8;
+      const snare=new Tone.NoiseSynth({noise:{type:'white'},envelope:{attack:.001,decay:.15,sustain:0}}).connect(new Tone.Filter(1700,'highpass').connect(masterChain())); snare.volume.value=-20;
+      const hat=new Tone.NoiseSynth({noise:{type:'white'},envelope:{attack:.001,decay:.03,sustain:0}}).connect(new Tone.Filter(8500,'highpass').connect(masterChain())); hat.volume.value=-28;
+      const crackle=new Tone.Noise('brown').start(); const cf=new Tone.Filter(1300,'lowpass'); crackle.connect(cf); cf.connect(masterChain()); crackle.volume.value=-32;
+      const ch=[[0,4,9,11],[-1,2,5,9],[-3,0,4,7],[-5,-1,4,7]]; const mel=[12,11,9,7,9,11]; let bar=0,mi=0;
+      const cl=new Tone.Loop(t=>{ const c=ch[bar%ch.length]; keys.triggerAttackRelease(c.map(d=>M(60+d)),'1m',t,.36); bass.triggerAttackRelease(M(36+c[0]),'2n.',t,.85); bar++; },'1m').start(0);
+      const ml=new Tone.Loop(t=>{ if(Math.random()<.6){ lead.triggerAttackRelease(M(72+mel[mi%mel.length]),'4n',t,.4); mi++; } },'2n').start('0:1');
+      const seq=new Tone.Sequence((t,s)=>{ hat.triggerAttackRelease('16n',t,(s%2?0.4:0.7)); if(s===0) kick.triggerAttackRelease('C1','8n',t,.9); if(s===4) kick.triggerAttackRelease('C1','8n',t,.6); if(s===2||s===6) snare.triggerAttackRelease('8n',t,.6); },[0,1,2,3,4,5,6,7],'8n').start(0);
+      n.push(rev,keys,lead,bass,kick,snare,hat,crackle,cf,cl,ml,seq); } },
+
+  { id:'friendlofi', name:'Friends — Lo-fi', emoji:'🤝', bpm:90, swing:0.16,
+    desc:'A bright, bouncy lo-fi groove with a playful bassline and a cheerful little hook. Fun, sunny and hopeful, made for friends.',
+    build(n){ const rev=new Tone.Reverb({decay:2.5,wet:.2}).connect(masterChain());
+      const keys=new Tone.PolySynth(Tone.FMSynth).connect(rev);
+      keys.set({harmonicity:2.5,modulationIndex:3.5,envelope:{attack:.005,decay:.5,sustain:.15,release:.8},modulationEnvelope:{attack:.005,decay:.3,sustain:0,release:.3}}); keys.volume.value=-15;
+      const pluck=new Tone.Synth({oscillator:{type:'triangle'},envelope:{attack:.003,decay:.25,sustain:0,release:.3}}).connect(rev); pluck.volume.value=-16;
+      const bass=new Tone.MonoSynth({oscillator:{type:'square'},envelope:{attack:.01,decay:.25,sustain:.3,release:.3},filterEnvelope:{baseFrequency:200,octaves:2.5}}).connect(masterChain()); bass.volume.value=-15;
+      const kick=new Tone.MembraneSynth({octaves:5,pitchDecay:.04}).connect(masterChain()); kick.volume.value=-7;
+      const snare=new Tone.NoiseSynth({noise:{type:'white'},envelope:{attack:.001,decay:.14,sustain:0}}).connect(new Tone.Filter(1900,'highpass').connect(masterChain())); snare.volume.value=-17;
+      const hat=new Tone.NoiseSynth({noise:{type:'white'},envelope:{attack:.001,decay:.03,sustain:0}}).connect(new Tone.Filter(9000,'highpass').connect(masterChain())); hat.volume.value=-24;
+      const crackle=new Tone.Noise('brown').start(); const cf=new Tone.Filter(1500,'lowpass'); crackle.connect(cf); cf.connect(masterChain()); crackle.volume.value=-35;
+      const ch=[[0,4,7,9],[5,9,12,14],[-3,0,4,7],[2,5,9,11]]; const bl=[0,0,7,0,5,0,7,0]; const hook=[12,14,16,14,12,9]; let bar=0,bi=0,hi=0;
+      const cl=new Tone.Loop(t=>{ const c=ch[bar%ch.length]; keys.triggerAttackRelease(c.map(d=>M(60+d)),'2n',t,.36); bar++; },'1m').start(0);
+      const bseq=new Tone.Sequence((t,s)=>{ const c=ch[Math.floor(bi/8)%ch.length]; bass.triggerAttackRelease(M(36+c[0]+bl[s]),'8n',t,.8); bi++; },[0,1,2,3,4,5,6,7],'8n').start(0);
+      const hl=new Tone.Loop(t=>{ if(Math.random()<.5){ pluck.triggerAttackRelease(M(72+hook[hi%hook.length]),'8n',t,.5); hi++; } },'4n').start('0:2');
+      const seq=new Tone.Sequence((t,s)=>{ hat.triggerAttackRelease('16n',t,(s%2?0.5:0.8)); if(s===0||s===4) kick.triggerAttackRelease('C1','8n',t,.9); if(s===2||s===6) snare.triggerAttackRelease('8n',t,.7); },[0,1,2,3,4,5,6,7],'8n').start(0);
+      n.push(rev,keys,pluck,bass,kick,snare,hat,crackle,cf,cl,bseq,hl,seq); } },
+
+  { id:'familylofi', name:'Family — Lo-fi', emoji:'🏡', bpm:78, swing:0.18,
+    desc:'A cozy, nostalgic lo-fi groove with warm chords and a sweet music-box melody. Heartfelt and homey, made for family.',
+    build(n){ const rev=new Tone.Reverb({decay:3.5,wet:.28}).connect(masterChain());
+      const keys=new Tone.PolySynth(Tone.FMSynth).connect(rev);
+      keys.set({harmonicity:2,modulationIndex:2.8,envelope:{attack:.015,decay:.7,sustain:.2,release:1.2},modulationEnvelope:{attack:.015,decay:.35,sustain:0,release:.35}}); keys.volume.value=-15;
+      const box=new Tone.Synth({oscillator:{type:'triangle'},envelope:{attack:.001,decay:1,sustain:0,release:.9}}).connect(rev); box.volume.value=-15;
+      const bass=new Tone.MonoSynth({oscillator:{type:'sine'},envelope:{attack:.02,decay:.3,sustain:.5,release:.4},filterEnvelope:{baseFrequency:150,octaves:2}}).connect(masterChain()); bass.volume.value=-13;
+      const kick=new Tone.MembraneSynth({octaves:5,pitchDecay:.045}).connect(masterChain()); kick.volume.value=-8;
+      const snare=new Tone.NoiseSynth({noise:{type:'white'},envelope:{attack:.001,decay:.15,sustain:0}}).connect(new Tone.Filter(1800,'highpass').connect(masterChain())); snare.volume.value=-19;
+      const hat=new Tone.NoiseSynth({noise:{type:'white'},envelope:{attack:.001,decay:.03,sustain:0}}).connect(new Tone.Filter(8000,'highpass').connect(masterChain())); hat.volume.value=-26;
+      const crackle=new Tone.Noise('brown').start(); const cf=new Tone.Filter(1200,'lowpass'); crackle.connect(cf); cf.connect(masterChain()); crackle.volume.value=-30;
+      const ch=[[0,4,7,9],[-3,0,4,7],[-5,-1,2,5],[-7,-3,0,4]]; const mel=[12,14,16,12,14,9,11,12]; let bar=0,mi=0;
+      const cl=new Tone.Loop(t=>{ const c=ch[bar%ch.length]; keys.triggerAttackRelease(c.map(d=>M(60+d)),'1m',t,.36); bass.triggerAttackRelease(M(36+c[0]),'2n.',t,.85); bar++; },'1m').start(0);
+      const ml=new Tone.Loop(t=>{ if(Math.random()<.7){ box.triggerAttackRelease(M(72+mel[mi%mel.length]),'8n',t,.45); mi++; } },'4n').start('0:1');
+      const seq=new Tone.Sequence((t,s)=>{ hat.triggerAttackRelease('16n',t,(s%2?0.45:0.75)); if(s===0||s===4) kick.triggerAttackRelease('C1','8n',t,.9); if(s===2||s===6) snare.triggerAttackRelease('8n',t,.65); },[0,1,2,3,4,5,6,7],'8n').start(0);
+      n.push(rev,keys,box,bass,kick,snare,hat,crackle,cf,cl,ml,seq); } },
 
   { id:'synth', name:'Dream Synth', emoji:'🌈', bpm:70,
     desc:'Retro-dreamy analog pad with a soft pulsing arpeggio. Nostalgic, warm, a little magical.',
