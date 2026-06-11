@@ -140,6 +140,14 @@
     <button class="pill" data-track="celesta">Celesta ✨</button>
   </div>
 
+  <h3>Weather</h3>
+  <div class="styleRow" id="weatherRow">
+    <button class="pill sel" data-weather="none">None</button>
+    <button class="pill" data-weather="rain">Rain 🌧</button>
+    <button class="pill" data-weather="sun">Sun ☀️</button>
+    <button class="pill" data-weather="snow">Snow ❄️</button>
+  </div>
+
   <button id="createBtn">Create gift link</button>
   <div class="note" id="cfgNote" style="display:none"></div>
   <div id="result"></div>
@@ -623,6 +631,7 @@ function initBuilder(){
   buildSlots(); refreshPreview();
   document.querySelectorAll('#styleRow .pill').forEach(b=> b.addEventListener('click',()=>{ document.querySelectorAll('#styleRow .pill').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); applyStyle(b.dataset.style); }));
   document.querySelectorAll('#moodRow .pill').forEach(b=> b.addEventListener('click',()=>{ document.querySelectorAll('#moodRow .pill').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); setTrack(b.dataset.track); }));
+  document.querySelectorAll('#weatherRow .pill').forEach(b=> b.addEventListener('click',()=>{ setWeather(b.dataset.weather); }));
   document.getElementById('builderToggle').addEventListener('click',()=> document.getElementById('builder').classList.toggle('hidden'));
   if(!sb){ const n=document.getElementById('cfgNote'); n.style.display='block'; n.textContent='Sharing turns on once your Supabase keys are added. You can still preview everything now.'; }
   document.getElementById('createBtn').addEventListener('click',createGift);
@@ -653,7 +662,7 @@ async function createGift(){
   const hasUploads=items.some(it=>it.file);
   const btn=document.getElementById('createBtn'); btn.disabled=true; btn.textContent=t('creating');
   try{
-    const meta={ style:currentStyle, music:music.track,
+    const meta={ style:currentStyle, music:music.track, weather:weather.mode,
       to_name:document.getElementById('toName').value||'',
       from_name:document.getElementById('fromName').value||'',
       message:document.getElementById('message').value||'' };
@@ -707,7 +716,7 @@ async function initGift(){
     return;
   }
   document.getElementById('loading').style.display='none';
-  applyStyle(card.style||'aurora'); music.track=card.music||'lofibeat'; setImages(card.items||[]);
+  applyStyle(card.style||'aurora'); music.track=card.music||'lofibeat'; setImages(card.items||[]); setWeather(card.weather||'none');
   // envelope
   const env=document.getElementById('envelope'); env.style.display='flex';
   document.getElementById('envFor').textContent=card.to_name?(t('forName')+card.to_name):'';
@@ -755,7 +764,8 @@ function setWeather(mode){ if(!weather.canvas){ weather.canvas=document.getEleme
   document.body.classList.remove('raining','sunny','snowing');
   if(mode==='none'){ if(weather.ctx) weather.ctx.clearRect(0,0,weather.w,weather.h); }
   else { document.body.classList.add(mode==='rain'?'raining':(mode==='sun'?'sunny':'snowing')); seedParts(mode); weatherFrame(); }
-  const b=document.getElementById('weatherBtn'); if(b){ b.textContent=(typeof t==='function'?t('w_'+mode):WEATHER_LABEL[mode])+(mode!=='none'?' ✓':''); b.classList.toggle('sel',mode!=='none'); } }
+  const b=document.getElementById('weatherBtn'); if(b){ b.textContent=(typeof t==='function'?t('w_'+mode):WEATHER_LABEL[mode])+(mode!=='none'?' ✓':''); b.classList.toggle('sel',mode!=='none'); }
+  document.querySelectorAll('#weatherRow .pill').forEach(x=>x.classList.toggle('sel',x.dataset.weather===mode)); }
 function cycleWeather(){ const i=WEATHER_MODES.indexOf(weather.mode); setWeather(WEATHER_MODES[(i+1)%WEATHER_MODES.length]); }
 
 document.getElementById('musicBtn').addEventListener('click',toggleMusic);
@@ -774,6 +784,7 @@ const I18N={
     toPh:'To… (e.g. Mom)', fromPh:'From… (e.g. Frank)', msgPh:'Write something from the heart…', caption:'Caption {n} (optional)',
     m_lofibeat:'Lo-fi Beat 🎧', m_lovelofi:'Lovers 💗', m_friendlofi:'Friends 🤝', m_familylofi:'Family 🏡', m_lofi:'Lo-fi Dreams ☕', m_pads:'Aurora 🌌', m_box:'Music Box 🎁', m_strings:'Strings 🎻', m_harp:'Harp 🪽', m_synth:'Dream Synth 🌈', m_bossa:'Bossa 🍹', m_celesta:'Celesta ✨',
     music:'♪ Music', gestures:'✋ Gestures', guide:'？ Guide', w_none:'🌦 Weather', w_rain:'🌧 Rain', w_sun:'☀️ Sun', w_snow:'❄️ Snow',
+    h_weather:'Weather', wo_none:'None', wo_rain:'Rain 🌧', wo_sun:'Sun ☀️', wo_snow:'Snow ❄️',
     giftReady:'Your gift is ready 🎁', copy:'Copy', openPreview:'Open preview ↗', linkNote:'This tree stays alive for 48 hours, then gently fades away. 🥀', linkCopied:'Link copied!',
     giftTitle:'A gift for you', openGift:'Open your gift', forName:'For ', loading:'opening…',
     expired:'This tree has faded away 🥀', expiredSub:'Gifts last 48 hours',
@@ -787,6 +798,7 @@ const I18N={
     toPh:'給… (例如 媽媽)', fromPh:'來自… (例如 Frank)', msgPh:'寫下你的心裡話…', caption:'標題 {n}（可選）',
     m_lofibeat:'Lo-fi 節拍 🎧', m_lovelofi:'戀人 💗', m_friendlofi:'朋友 🤝', m_familylofi:'家人 🏡', m_lofi:'Lo-fi 夢境 ☕', m_pads:'極光 🌌', m_box:'八音盒 🎁', m_strings:'弦樂 🎻', m_harp:'豎琴 🪽', m_synth:'夢幻合成 🌈', m_bossa:'巴薩 🍹', m_celesta:'鋼片琴 ✨',
     music:'♪ 音樂', gestures:'✋ 手勢', guide:'？ 指南', w_none:'🌦 天氣', w_rain:'🌧 下雨', w_sun:'☀️ 陽光', w_snow:'❄️ 下雪',
+    h_weather:'天氣', wo_none:'無', wo_rain:'下雨 🌧', wo_sun:'陽光 ☀️', wo_snow:'下雪 ❄️',
     giftReady:'你的禮物已就緒 🎁', copy:'複製', openPreview:'開啟預覽 ↗', linkNote:'這棵樹會存在 48 小時，然後輕輕消逝。🥀', linkCopied:'連結已複製！',
     giftTitle:'給你的禮物', openGift:'打開你的禮物', forName:'致 ', loading:'正在開啟…',
     expired:'這棵樹已經消逝 🥀', expiredSub:'禮物保留 48 小時',
@@ -802,10 +814,11 @@ function setLang(l){
   const q=(sel,k)=>{ const e=document.querySelector(sel); if(e) e.textContent=t(k); };
   q('#title h1','title'); q('#title p','subtitle');
   q('#builder h2','makeTree'); q('#builder .sub','builderSub');
-  const h3=document.querySelectorAll('#builder h3'); const hk=['h_style','h_photos','h_message','h_music']; h3.forEach((e,i)=>{ if(hk[i]) e.textContent=t(hk[i]); });
+  const h3=document.querySelectorAll('#builder h3'); const hk=['h_style','h_photos','h_message','h_music','h_weather']; h3.forEach((e,i)=>{ if(hk[i]) e.textContent=t(hk[i]); });
   byId('createBtn','createBtn'); byId('builderToggle','edit');
   document.querySelectorAll('#styleRow .pill').forEach(b=>{ b.textContent=t('s_'+b.dataset.style); });
   document.querySelectorAll('#moodRow .pill').forEach(b=>{ b.textContent=t('m_'+b.dataset.track); });
+  document.querySelectorAll('#weatherRow .pill').forEach(b=>{ b.textContent=t('wo_'+b.dataset.weather); });
   const tn=document.getElementById('toName'); if(tn) tn.placeholder=t('toPh');
   const fn=document.getElementById('fromName'); if(fn) fn.placeholder=t('fromPh');
   const mg=document.getElementById('message'); if(mg) mg.placeholder=t('msgPh');
