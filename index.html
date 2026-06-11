@@ -123,16 +123,20 @@
   </div>
   <textarea class="field" id="message" placeholder="Write something from the heart…"></textarea>
 
-  <h3>Music mood</h3>
+  <h3>Music</h3>
   <div class="moodRow" id="moodRow">
-    <button class="pill sel" data-mood="calm">Calm</button>
-    <button class="pill" data-mood="dreamy">Dreamy</button>
-    <button class="pill" data-mood="hopeful">Hopeful</button>
-    <button class="pill" data-mood="tender">Tender</button>
-    <button class="pill" data-mood="joyful">Joyful</button>
-    <button class="pill" data-mood="cozy">Cozy</button>
-    <button class="pill" data-mood="starlight">Starlight</button>
-    <button class="pill" data-mood="festive">Festive</button>
+    <button class="pill sel" data-track="lofibeat">Lo-fi Beat 🎧</button>
+    <button class="pill" data-track="lovelofi">Lovers 💗</button>
+    <button class="pill" data-track="friendlofi">Friends 🤝</button>
+    <button class="pill" data-track="familylofi">Family 🏡</button>
+    <button class="pill" data-track="lofi">Lo-fi Dreams ☕</button>
+    <button class="pill" data-track="pads">Aurora 🌌</button>
+    <button class="pill" data-track="box">Music Box 🎁</button>
+    <button class="pill" data-track="strings">Strings 🎻</button>
+    <button class="pill" data-track="harp">Harp 🪽</button>
+    <button class="pill" data-track="synth">Dream Synth 🌈</button>
+    <button class="pill" data-track="bossa">Bossa 🍹</button>
+    <button class="pill" data-track="celesta">Celesta ✨</button>
   </div>
 
   <button id="createBtn">Create gift link</button>
@@ -358,39 +362,137 @@ function applyStyle(name){ const s=STYLES[name]; if(!s) return; currentStyle=nam
   rebuildShape(s.shape||'tree');
 }
 
-/* ---- generative music (Tone.js) ---- */
-const MOODS={ calm:{scale:[0,3,5,7,10],root:48,wave:'sine',bpm:50}, dreamy:{scale:[0,2,4,7,9],root:50,wave:'triangle',bpm:48},
-  hopeful:{scale:[0,2,4,7,11],root:52,wave:'sine',bpm:56}, tender:{scale:[0,3,7,10,12],root:45,wave:'sine',bpm:50},
-  joyful:{scale:[0,2,4,7,9,12],root:55,wave:'triangle',bpm:62}, cozy:{scale:[0,2,3,5,7,9],root:48,wave:'sine',bpm:46},
-  starlight:{scale:[0,2,5,7,9,14],root:57,wave:'sine',bpm:44}, festive:{scale:[0,2,4,5,7,9,11],root:52,wave:'triangle',bpm:60} };
-const music={synth:null,reverb:null,delay:null,bell:null,loop:null,started:false,mood:'calm'};
-const m2f=m=>440*Math.pow(2,(m-69)/12);
-async function startMusic(){
-  try{ await Tone.start(); }catch(e){}
-  if(!music.synth){
-    music.reverb=new Tone.Reverb({decay:11,wet:0.68}).toDestination();
-    music.delay=new Tone.FeedbackDelay({delayTime:'4n.',feedback:0.3,wet:0.18}).connect(music.reverb);
-    music.synth=new Tone.PolySynth(Tone.Synth).connect(music.delay);
-    music.synth.set({oscillator:{type:'sine'},envelope:{attack:0.35,decay:0.6,sustain:0.5,release:3.6}}); music.synth.volume.value=-17;
-    music.bell=new Tone.PolySynth(Tone.Synth).connect(music.reverb);
-    music.bell.set({oscillator:{type:'triangle'},envelope:{attack:0.01,decay:1.4,sustain:0,release:1.6}}); music.bell.volume.value=-25;
-  }
-  if(!music.loop){
-    music.loop=new Tone.Loop(time=>{ const m=MOODS[music.mood]||MOODS.calm;
-      const n=1+(Math.random()<0.55?1:0)+(Math.random()<0.28?1:0); const notes=[];
-      for(let k=0;k<n;k++){ const deg=m.scale[Math.floor(Math.random()*m.scale.length)]; const oct=12*(Math.random()<0.3?1:0); notes.push(m2f(m.root+deg+oct)); }
-      music.synth.set({oscillator:{type:m.wave}}); music.synth.triggerAttackRelease(notes,'2n',time,0.4+Math.random()*0.3);
-      if(Math.random()<0.4){ const deg=m.scale[Math.floor(Math.random()*m.scale.length)]; music.bell.triggerAttackRelease(m2f(m.root+deg+24),'8n',time+0.25,0.5); }
-    },'2n');
-    music.loop.start(0);
-  }
-  Tone.Transport.bpm.value=(MOODS[music.mood]||MOODS.calm).bpm; Tone.Transport.start(); music.started=true; updateMusicBtn();
-}
-function stopMusic(){ if(music.loop) Tone.Transport.pause(); music.started=false; updateMusicBtn(); }
-function toggleMusic(){ music.started?stopMusic():startMusic(); }
-function playMoodHit(){ if(!music.synth) return; const mm=MOODS[music.mood]||MOODS.calm; const ns=[mm.scale[0], mm.scale[Math.min(2,mm.scale.length-1)], mm.scale[mm.scale.length-1]].map(d=>m2f(mm.root+d)); music.synth.set({oscillator:{type:mm.wave}}); music.synth.triggerAttackRelease(ns,'2n',Tone.now(),0.6); if(music.bell) music.bell.triggerAttackRelease(m2f(mm.root+mm.scale[mm.scale.length-1]+24),'8n',Tone.now()+0.18,0.5); }
-async function setMood(m){ music.mood=m; if(!music.started){ await startMusic(); } else { Tone.Transport.bpm.value=(MOODS[m]||MOODS.calm).bpm; } playMoodHit(); }
-function updateMusicBtn(){ const b=document.getElementById('musicBtn'); b.textContent=music.started?'♪ Music ✓':'♪ Music'; b.classList.toggle('sel',music.started); }
+/* ---- generative music (Tone.js) — Studio engines ---- */
+let music, startMusic, toggleMusic, setTrack;
+(function(){
+  const M=m=>Tone.Frequency(m,'midi').toFrequency();
+  const pick=a=>a[Math.floor(Math.random()*a.length)];
+  let _mGain,_mComp;
+  function masterChain(){ if(_mGain) return _mGain; _mComp=new Tone.Compressor(-18,3).toDestination(); _mGain=new Tone.Gain(0.85).connect(_mComp); return _mGain; }
+  const TRACKS={
+    pads:{ bpm:54, build(n){ const rev=new Tone.Reverb({decay:13,wet:.62}).connect(masterChain());
+      const pad=new Tone.PolySynth(Tone.Synth).connect(rev);
+      pad.set({oscillator:{type:'sine'},envelope:{attack:1.4,decay:.6,sustain:.75,release:6}}); pad.volume.value=-15;
+      const ch=[[0,4,7,11],[-3,2,5,9],[-5,0,4,7],[2,5,9,12]]; let i=0;
+      const lp=new Tone.Loop(t=>{ pad.triggerAttackRelease(ch[i%ch.length].map(d=>M(60+d)),'1m',t,.45); i++; },'2m').start(0);
+      n.push(rev,pad,lp); } },
+    box:{ bpm:72, build(n){ const rev=new Tone.Reverb({decay:6,wet:.5}).connect(masterChain());
+      const mb=new Tone.PolySynth(Tone.Synth).connect(rev);
+      mb.set({oscillator:{type:'triangle'},envelope:{attack:.001,decay:1.3,sustain:0,release:1.3}}); mb.volume.value=-9;
+      const sc=[0,2,4,7,9,12,14,16]; const root=72;
+      const lp=new Tone.Loop(t=>{ if(Math.random()<.88){ const notes=[M(root+pick(sc))]; if(Math.random()<.25) notes.push(M(root+pick(sc)+ (Math.random()<.5?-12:7))); mb.triggerAttackRelease(notes,'8n',t,.55+Math.random()*.3);} },'4n').start(0);
+      n.push(rev,mb,lp); } },
+    strings:{ bpm:48, build(n){ const rev=new Tone.Reverb({decay:9,wet:.55}).connect(masterChain());
+      const filt=new Tone.Filter(1100,'lowpass').connect(rev);
+      const st=new Tone.PolySynth(Tone.Synth).connect(filt);
+      st.set({oscillator:{type:'sawtooth'},envelope:{attack:1.8,decay:.4,sustain:.85,release:3.5}}); st.volume.value=-24;
+      const ch=[[0,3,7],[-2,3,5],[-4,0,3],[-5,-1,2]]; let i=0;
+      const lp=new Tone.Loop(t=>{ st.triggerAttackRelease(ch[i%ch.length].map(d=>M(52+d)),'1m',t,.5); i++; },'1m').start(0);
+      n.push(rev,filt,st,lp); } },
+    harp:{ bpm:84, build(n){ const rev=new Tone.Reverb({decay:6,wet:.5}).connect(masterChain());
+      const h=new Tone.PolySynth(Tone.Synth).connect(rev);
+      h.set({oscillator:{type:'triangle'},envelope:{attack:.005,decay:1.5,sustain:0,release:1.6}}); h.volume.value=-12;
+      const sc=[0,2,4,7,9,12,16,19]; const root=50; let s=0; let dir=1;
+      const lp=new Tone.Loop(t=>{ h.triggerAttackRelease(M(root+sc[s]),'8n',t,.5); s+=dir; if(s>=sc.length-1){dir=-1;} if(s<=0){dir=1;} },'16n').start(0);
+      n.push(rev,h,lp); } },
+    lofi:{ bpm:68, build(n){ const rev=new Tone.Reverb({decay:6,wet:.45}).connect(masterChain());
+      const cho=new Tone.Chorus(2,2.5,.5).start().connect(rev);
+      const k=new Tone.PolySynth(Tone.Synth).connect(cho);
+      k.set({oscillator:{type:'sine'},detune:7,envelope:{attack:.03,decay:.5,sustain:.55,release:1.8}}); k.volume.value=-14;
+      const ch=[[0,4,7,11],[-3,0,4,9],[-5,-1,2,7],[-7,-3,0,5]]; let i=0;
+      const lp=new Tone.Loop(t=>{ k.triggerAttackRelease(ch[i%ch.length].map(d=>M(60+d)),'2n',t,.4);
+        if(Math.random()<.4) k.triggerAttackRelease(M(72+pick([0,2,4,7,9])),'8n',t+ Tone.Time('4n').toSeconds(),.25); i++; },'1m').start(0);
+      n.push(rev,cho,k,lp); } },
+    lofibeat:{ bpm:80, swing:0.22, build(n){ const rev=new Tone.Reverb({decay:3,wet:.22}).connect(masterChain());
+      const keys=new Tone.PolySynth(Tone.FMSynth).connect(rev);
+      keys.set({harmonicity:2,modulationIndex:3,envelope:{attack:.01,decay:.7,sustain:.18,release:1.1},modulationEnvelope:{attack:.01,decay:.35,sustain:0,release:.3}}); keys.volume.value=-15;
+      const bass=new Tone.MonoSynth({oscillator:{type:'sine'},envelope:{attack:.02,decay:.3,sustain:.5,release:.4},filterEnvelope:{baseFrequency:160,octaves:2}}).connect(masterChain()); bass.volume.value=-13;
+      const kick=new Tone.MembraneSynth({octaves:5,pitchDecay:.045}).connect(masterChain()); kick.volume.value=-7;
+      const snare=new Tone.NoiseSynth({noise:{type:'white'},envelope:{attack:.001,decay:.16,sustain:0}}).connect(new Tone.Filter(1800,'highpass').connect(masterChain())); snare.volume.value=-18;
+      const hat=new Tone.NoiseSynth({noise:{type:'white'},envelope:{attack:.001,decay:.035,sustain:0}}).connect(new Tone.Filter(8000,'highpass').connect(masterChain())); hat.volume.value=-26;
+      const crackle=new Tone.Noise('brown').start(); const cf=new Tone.Filter(1400,'lowpass'); crackle.connect(cf); cf.connect(masterChain()); crackle.volume.value=-33;
+      const ch=[[0,4,7,11,14],[-2,2,5,9,12],[-4,0,3,7,10],[-5,-1,2,5,9]]; let bar=0;
+      const cl=new Tone.Loop(t=>{ const c=ch[bar%ch.length]; keys.triggerAttackRelease(c.map(d=>M(60+d)),'1m',t,.38); bass.triggerAttackRelease(M(36+c[0]),'2n.',t,.85); bar++; },'1m').start(0);
+      const seq=new Tone.Sequence((t,s)=>{ hat.triggerAttackRelease('16n',t,(s%2?0.5:0.85)); if(s===0||s===4) kick.triggerAttackRelease('C1','8n',t,.9); if(s===2||s===6) snare.triggerAttackRelease('8n',t,.7); },[0,1,2,3,4,5,6,7],'8n').start(0);
+      n.push(rev,keys,bass,kick,snare,hat,crackle,cf,cl,seq); } },
+    lovelofi:{ bpm:72, swing:0.2, build(n){ const rev=new Tone.Reverb({decay:4,wet:.3}).connect(masterChain());
+      const keys=new Tone.PolySynth(Tone.FMSynth).connect(rev);
+      keys.set({harmonicity:2,modulationIndex:2.5,envelope:{attack:.02,decay:.8,sustain:.2,release:1.4},modulationEnvelope:{attack:.02,decay:.4,sustain:0,release:.4}}); keys.volume.value=-15;
+      const lead=new Tone.Synth({oscillator:{type:'sine'},envelope:{attack:.04,decay:.4,sustain:.2,release:1.2}}).connect(rev); lead.volume.value=-17;
+      const bass=new Tone.MonoSynth({oscillator:{type:'sine'},envelope:{attack:.02,decay:.3,sustain:.5,release:.5},filterEnvelope:{baseFrequency:140,octaves:2}}).connect(masterChain()); bass.volume.value=-13;
+      const kick=new Tone.MembraneSynth({octaves:5,pitchDecay:.05}).connect(masterChain()); kick.volume.value=-8;
+      const snare=new Tone.NoiseSynth({noise:{type:'white'},envelope:{attack:.001,decay:.15,sustain:0}}).connect(new Tone.Filter(1700,'highpass').connect(masterChain())); snare.volume.value=-20;
+      const hat=new Tone.NoiseSynth({noise:{type:'white'},envelope:{attack:.001,decay:.03,sustain:0}}).connect(new Tone.Filter(8500,'highpass').connect(masterChain())); hat.volume.value=-28;
+      const crackle=new Tone.Noise('brown').start(); const cf=new Tone.Filter(1300,'lowpass'); crackle.connect(cf); cf.connect(masterChain()); crackle.volume.value=-32;
+      const ch=[[0,4,9,11],[-1,2,5,9],[-3,0,4,7],[-5,-1,4,7]]; const mel=[12,11,9,7,9,11]; let bar=0,mi=0;
+      const cl=new Tone.Loop(t=>{ const c=ch[bar%ch.length]; keys.triggerAttackRelease(c.map(d=>M(60+d)),'1m',t,.36); bass.triggerAttackRelease(M(36+c[0]),'2n.',t,.85); bar++; },'1m').start(0);
+      const ml=new Tone.Loop(t=>{ if(Math.random()<.6){ lead.triggerAttackRelease(M(72+mel[mi%mel.length]),'4n',t,.4); mi++; } },'2n').start('0:1');
+      const seq=new Tone.Sequence((t,s)=>{ hat.triggerAttackRelease('16n',t,(s%2?0.4:0.7)); if(s===0) kick.triggerAttackRelease('C1','8n',t,.9); if(s===4) kick.triggerAttackRelease('C1','8n',t,.6); if(s===2||s===6) snare.triggerAttackRelease('8n',t,.6); },[0,1,2,3,4,5,6,7],'8n').start(0);
+      n.push(rev,keys,lead,bass,kick,snare,hat,crackle,cf,cl,ml,seq); } },
+    friendlofi:{ bpm:90, swing:0.16, build(n){ const rev=new Tone.Reverb({decay:2.5,wet:.2}).connect(masterChain());
+      const keys=new Tone.PolySynth(Tone.FMSynth).connect(rev);
+      keys.set({harmonicity:2.5,modulationIndex:3.5,envelope:{attack:.005,decay:.5,sustain:.15,release:.8},modulationEnvelope:{attack:.005,decay:.3,sustain:0,release:.3}}); keys.volume.value=-15;
+      const pluck=new Tone.Synth({oscillator:{type:'triangle'},envelope:{attack:.003,decay:.25,sustain:0,release:.3}}).connect(rev); pluck.volume.value=-16;
+      const bass=new Tone.MonoSynth({oscillator:{type:'square'},envelope:{attack:.01,decay:.25,sustain:.3,release:.3},filterEnvelope:{baseFrequency:200,octaves:2.5}}).connect(masterChain()); bass.volume.value=-15;
+      const kick=new Tone.MembraneSynth({octaves:5,pitchDecay:.04}).connect(masterChain()); kick.volume.value=-7;
+      const snare=new Tone.NoiseSynth({noise:{type:'white'},envelope:{attack:.001,decay:.14,sustain:0}}).connect(new Tone.Filter(1900,'highpass').connect(masterChain())); snare.volume.value=-17;
+      const hat=new Tone.NoiseSynth({noise:{type:'white'},envelope:{attack:.001,decay:.03,sustain:0}}).connect(new Tone.Filter(9000,'highpass').connect(masterChain())); hat.volume.value=-24;
+      const crackle=new Tone.Noise('brown').start(); const cf=new Tone.Filter(1500,'lowpass'); crackle.connect(cf); cf.connect(masterChain()); crackle.volume.value=-35;
+      const ch=[[0,4,7,9],[5,9,12,14],[-3,0,4,7],[2,5,9,11]]; const bl=[0,0,7,0,5,0,7,0]; const hook=[12,14,16,14,12,9]; let bar=0,bi=0,hi=0;
+      const cl=new Tone.Loop(t=>{ const c=ch[bar%ch.length]; keys.triggerAttackRelease(c.map(d=>M(60+d)),'2n',t,.36); bar++; },'1m').start(0);
+      const bseq=new Tone.Sequence((t,s)=>{ const c=ch[Math.floor(bi/8)%ch.length]; bass.triggerAttackRelease(M(36+c[0]+bl[s]),'8n',t,.8); bi++; },[0,1,2,3,4,5,6,7],'8n').start(0);
+      const hl=new Tone.Loop(t=>{ if(Math.random()<.5){ pluck.triggerAttackRelease(M(72+hook[hi%hook.length]),'8n',t,.5); hi++; } },'4n').start('0:2');
+      const seq=new Tone.Sequence((t,s)=>{ hat.triggerAttackRelease('16n',t,(s%2?0.5:0.8)); if(s===0||s===4) kick.triggerAttackRelease('C1','8n',t,.9); if(s===2||s===6) snare.triggerAttackRelease('8n',t,.7); },[0,1,2,3,4,5,6,7],'8n').start(0);
+      n.push(rev,keys,pluck,bass,kick,snare,hat,crackle,cf,cl,bseq,hl,seq); } },
+    familylofi:{ bpm:78, swing:0.18, build(n){ const rev=new Tone.Reverb({decay:3.5,wet:.28}).connect(masterChain());
+      const keys=new Tone.PolySynth(Tone.FMSynth).connect(rev);
+      keys.set({harmonicity:2,modulationIndex:2.8,envelope:{attack:.015,decay:.7,sustain:.2,release:1.2},modulationEnvelope:{attack:.015,decay:.35,sustain:0,release:.35}}); keys.volume.value=-15;
+      const box=new Tone.Synth({oscillator:{type:'triangle'},envelope:{attack:.001,decay:1,sustain:0,release:.9}}).connect(rev); box.volume.value=-15;
+      const bass=new Tone.MonoSynth({oscillator:{type:'sine'},envelope:{attack:.02,decay:.3,sustain:.5,release:.4},filterEnvelope:{baseFrequency:150,octaves:2}}).connect(masterChain()); bass.volume.value=-13;
+      const kick=new Tone.MembraneSynth({octaves:5,pitchDecay:.045}).connect(masterChain()); kick.volume.value=-8;
+      const snare=new Tone.NoiseSynth({noise:{type:'white'},envelope:{attack:.001,decay:.15,sustain:0}}).connect(new Tone.Filter(1800,'highpass').connect(masterChain())); snare.volume.value=-19;
+      const hat=new Tone.NoiseSynth({noise:{type:'white'},envelope:{attack:.001,decay:.03,sustain:0}}).connect(new Tone.Filter(8000,'highpass').connect(masterChain())); hat.volume.value=-26;
+      const crackle=new Tone.Noise('brown').start(); const cf=new Tone.Filter(1200,'lowpass'); crackle.connect(cf); cf.connect(masterChain()); crackle.volume.value=-30;
+      const ch=[[0,4,7,9],[-3,0,4,7],[-5,-1,2,5],[-7,-3,0,4]]; const mel=[12,14,16,12,14,9,11,12]; let bar=0,mi=0;
+      const cl=new Tone.Loop(t=>{ const c=ch[bar%ch.length]; keys.triggerAttackRelease(c.map(d=>M(60+d)),'1m',t,.36); bass.triggerAttackRelease(M(36+c[0]),'2n.',t,.85); bar++; },'1m').start(0);
+      const ml=new Tone.Loop(t=>{ if(Math.random()<.7){ box.triggerAttackRelease(M(72+mel[mi%mel.length]),'8n',t,.45); mi++; } },'4n').start('0:1');
+      const seq=new Tone.Sequence((t,s)=>{ hat.triggerAttackRelease('16n',t,(s%2?0.45:0.75)); if(s===0||s===4) kick.triggerAttackRelease('C1','8n',t,.9); if(s===2||s===6) snare.triggerAttackRelease('8n',t,.65); },[0,1,2,3,4,5,6,7],'8n').start(0);
+      n.push(rev,keys,box,bass,kick,snare,hat,crackle,cf,cl,ml,seq); } },
+    synth:{ bpm:70, build(n){ const rev=new Tone.Reverb({decay:7,wet:.5}).connect(masterChain());
+      const dl=new Tone.FeedbackDelay({delayTime:'8n.',feedback:.35,wet:.3}).connect(rev);
+      const pad=new Tone.PolySynth(Tone.Synth).connect(rev); pad.set({oscillator:{type:'sawtooth'},envelope:{attack:.8,decay:.4,sustain:.7,release:3}}); pad.volume.value=-23;
+      const arp=new Tone.Synth({oscillator:{type:'triangle'},envelope:{attack:.005,decay:.2,sustain:.1,release:.4}}).connect(dl); arp.volume.value=-16;
+      const ch=[[0,3,7,10],[-2,2,5,8],[-4,0,3,7],[-1,2,5,9]]; let bar=0;
+      const cl=new Tone.Loop(t=>{ const c=ch[bar%ch.length]; pad.triggerAttackRelease(c.map(d=>M(48+d)),'1m',t,.5); bar++; },'1m').start(0);
+      const ax=[0,3,7,10,7,3]; let a=0;
+      const al=new Tone.Loop(t=>{ const c=ch[bar%ch.length]; arp.triggerAttackRelease(M(60+c[0]+ax[a%ax.length]),'16n',t,.5); a++; },'8n').start(0);
+      n.push(rev,dl,pad,arp,cl,al); } },
+    bossa:{ bpm:118, swing:0.12, build(n){ const rev=new Tone.Reverb({decay:3,wet:.28}).connect(masterChain());
+      const ep=new Tone.PolySynth(Tone.FMSynth).connect(rev);
+      ep.set({harmonicity:2,modulationIndex:4,envelope:{attack:.01,decay:.8,sustain:.2,release:1},modulationEnvelope:{attack:.01,decay:.4,sustain:0,release:.4}}); ep.volume.value=-15;
+      const ch=[[0,4,7,11],[-3,0,4,9],[-5,-1,2,7],[-1,2,5,9]]; let bar=0;
+      const cl=new Tone.Loop(t=>{ const c=ch[bar%ch.length];
+        ep.triggerAttackRelease(c.map(d=>M(60+d)),'4n',t,.4);
+        ep.triggerAttackRelease(c.map(d=>M(60+d)),'8n',t+Tone.Time('4n.').toSeconds(),.3);
+        ep.triggerAttackRelease(c.map(d=>M(60+d)),'8n',t+Tone.Time('2n.').toSeconds(),.3);
+        bar++; },'1m').start(0);
+      n.push(rev,ep,cl); } },
+    celesta:{ bpm:88, build(n){ const rev=new Tone.Reverb({decay:6,wet:.5}).connect(masterChain());
+      const c=new Tone.PolySynth(Tone.FMSynth).connect(rev);
+      c.set({harmonicity:3.5,modulationIndex:5,envelope:{attack:.001,decay:1.1,sustain:0,release:1},modulationEnvelope:{attack:.001,decay:.3,sustain:0,release:.3}}); c.volume.value=-13;
+      const sc=[0,2,4,7,9,12,14,16,19]; const root=72;
+      const lp=new Tone.Loop(t=>{ if(Math.random()<.8){ c.triggerAttackRelease(M(root+pick(sc)),'8n',t,.5+Math.random()*.3); } if(Math.random()<.25){ c.triggerAttackRelease(M(root+pick(sc)+12),'16n',t+Tone.Time('16n').toSeconds(),.35); } },'8n').start(0);
+      n.push(rev,c,lp); } }
+  };
+  music={ track:'lofibeat', nodes:[], started:false };
+  function buildTrack(id){ const t=TRACKS[id]||TRACKS.lofibeat; Tone.Transport.bpm.value=t.bpm; Tone.Transport.swing=t.swing||0; Tone.Transport.swingSubdivision='8n'; const nodes=[]; t.build(nodes); music.nodes=nodes; }
+  function clearTrack(){ Tone.Transport.cancel(0); music.nodes.forEach(x=>{ try{x.dispose();}catch(e){} }); music.nodes=[]; }
+  function updateMusicBtn(){ const b=document.getElementById('musicBtn'); if(b){ b.textContent=music.started?'♪ Music ✓':'♪ Music'; b.classList.toggle('sel',music.started); } }
+  startMusic=async function(){ try{ await Tone.start(); }catch(e){} Tone.Transport.stop(); clearTrack(); buildTrack(music.track); Tone.Transport.start('+0.05'); music.started=true; updateMusicBtn(); };
+  function stopMusic(){ Tone.Transport.stop(); clearTrack(); music.started=false; updateMusicBtn(); }
+  toggleMusic=function(){ music.started?stopMusic():startMusic(); };
+  setTrack=function(id){ music.track=id; if(!music.started){ startMusic(); } else { Tone.Transport.stop(); clearTrack(); buildTrack(id); Tone.Transport.start('+0.05'); } };
+})();
 
 /* ---- gestures (optional, lazy) ---- */
 const state={ morphTarget:0,morph:0, rot:new THREE.Vector3(0,0,0), rotTarget:new THREE.Vector3(0,0,0),
@@ -427,8 +529,15 @@ function onResults(res){ const hands=res.multiHandLandmarks||[];
   }
 }
 let hands,mpCamera,gesturesOn=false;
+function disableGestures(){
+  gesturesOn=false;
+  try{ if(mpCamera) mpCamera.stop(); }catch(e){}
+  document.getElementById('cam').style.display='none';
+  const b=document.getElementById('gestureBtn'); b.classList.remove('sel'); b.textContent='✋ Gestures';
+  state.steering=false; state.morphTarget=0; state.anyFist=false; state.holding=false; state.focusIndex=-1; state.waveX=null;
+}
 async function enableGestures(){
-  if(gesturesOn) return;
+  if(gesturesOn){ disableGestures(); return; }
   try{ document.getElementById('cam').style.display='block';
     hands=new Hands({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
     hands.setOptions({maxNumHands:2,modelComplexity:0,minDetectionConfidence:0.6,minTrackingConfidence:0.6});
@@ -512,7 +621,7 @@ function initBuilder(){
   document.getElementById('builderToggle').style.display='block';
   buildSlots(); refreshPreview();
   document.querySelectorAll('#styleRow .pill').forEach(b=> b.addEventListener('click',()=>{ document.querySelectorAll('#styleRow .pill').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); applyStyle(b.dataset.style); }));
-  document.querySelectorAll('#moodRow .pill').forEach(b=> b.addEventListener('click',()=>{ document.querySelectorAll('#moodRow .pill').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); setMood(b.dataset.mood); }));
+  document.querySelectorAll('#moodRow .pill').forEach(b=> b.addEventListener('click',()=>{ document.querySelectorAll('#moodRow .pill').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); setTrack(b.dataset.track); }));
   document.getElementById('builderToggle').addEventListener('click',()=> document.getElementById('builder').classList.toggle('hidden'));
   if(!sb){ const n=document.getElementById('cfgNote'); n.style.display='block'; n.textContent='Sharing turns on once your Supabase keys are added. You can still preview everything now.'; }
   document.getElementById('createBtn').addEventListener('click',createGift);
@@ -543,7 +652,7 @@ async function createGift(){
   const hasUploads=items.some(it=>it.file);
   const btn=document.getElementById('createBtn'); btn.disabled=true; btn.textContent='Creating…';
   try{
-    const meta={ style:currentStyle, music:music.mood,
+    const meta={ style:currentStyle, music:music.track,
       to_name:document.getElementById('toName').value||'',
       from_name:document.getElementById('fromName').value||'',
       message:document.getElementById('message').value||'' };
@@ -597,7 +706,7 @@ async function initGift(){
     return;
   }
   document.getElementById('loading').style.display='none';
-  applyStyle(card.style||'aurora'); music.mood=card.music||'calm'; setImages(card.items||[]);
+  applyStyle(card.style||'aurora'); music.track=card.music||'lofibeat'; setImages(card.items||[]);
   // envelope
   const env=document.getElementById('envelope'); env.style.display='flex';
   document.getElementById('envFor').textContent=card.to_name?('For '+card.to_name):'';
