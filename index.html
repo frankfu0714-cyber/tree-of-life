@@ -1018,10 +1018,15 @@ function weatherFrame(ts){ const g=weather.ctx, W=weather.w, H=weather.h; if(!g)
       if(f.kind==='star'){
         drawSnowflakeStar(g, x, f.y, f.r, f.a, f.spin);
       } else {
-        g.fillStyle='rgba(226,238,255,'+(f.a*0.30).toFixed(3)+')';
-        g.beginPath(); g.arc(x,f.y,f.r*2.0,0,6.2832); g.fill();
-        g.fillStyle='rgba(255,255,255,'+f.a.toFixed(3)+')';
-        g.beginPath(); g.arc(x,f.y,f.r*0.85,0,6.2832); g.fill();
+        // single soft radial-gradient dot: brightest center fading to transparent edge
+        // — replaces the previous halo+inner-circle pair that read as a tiny snowman
+        const R = f.r*1.7;
+        const grd = g.createRadialGradient(x, f.y, 0, x, f.y, R);
+        grd.addColorStop(0.00, 'rgba(255,255,255,'+f.a.toFixed(3)+')');
+        grd.addColorStop(0.35, 'rgba(240,248,255,'+(f.a*0.55).toFixed(3)+')');
+        grd.addColorStop(1.00, 'rgba(220,235,255,0)');
+        g.fillStyle = grd;
+        g.beginPath(); g.arc(x, f.y, R, 0, 6.2832); g.fill();
       }
       // accumulate when it reaches bottom (only mid+near flakes contribute)
       if(f.y > H - S.accum[Math.floor((x/W)*S.cells)|0] - 2){
